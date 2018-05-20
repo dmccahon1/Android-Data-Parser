@@ -5,16 +5,18 @@
 import datetime
 import os
 import shutil
+import pathlib
 
 
 def dbSearch():
     '''Searches for Database files within rawdump, moves to evidence'''
     dt = datetime.datetime.now()
+    evidence = "evidence/database"
     # Directory Setup
     try:
-        os.makedirs("evidence/database")
+        os.makedirs(evidence)
     except OSError:
-        if not os.path.isdir("evidence/database"):
+        if not os.path.isdir(evidence):
             raise
 
     count = 0
@@ -22,10 +24,13 @@ def dbSearch():
         for file in files:
             fileOpen = open(os.path.join(root, file), 'rb')
             sig = fileOpen.readline(13)
-            prefix = os.path.basename(root)
             fileOpen.close()
             if b"SQLite format" in sig:
-                count += 1
+                filePath = pathlib.Path(root).parts
+                app = filePath[2]
+
+                print(file)
+
     print(count)
 
 
