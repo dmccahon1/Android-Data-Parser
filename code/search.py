@@ -22,19 +22,14 @@ def dbSearch():
     count = 0
     for root, directories, files in os.walk('./rawdump'):
         for file in files:
-            fileOpen = open(os.path.join(root, file), 'rb')
+            path = os.path.join(root, file)
+            fileOpen = open(path, 'rb')
             sig = fileOpen.readline(13)
             fileOpen.close()
             if b"SQLite format" in sig:
                 filePath = pathlib.Path(root).parts
-                app = filePath[2]
-
-                print(file)
-
-    print(count)
-
-
-
+                appFile = evidence + "/" + filePath[2] + "-" + file
+                shutil.move(path, appFile)
 
 
 def main():
