@@ -27,9 +27,12 @@ def dbSearch():
             sig = fileOpen.readline(13)
             fileOpen.close()
             if b"SQLite format" in sig:
+                count += 1
                 filePath = pathlib.Path(root).parts
                 appFile = evidence + "/" + filePath[2] + "-" + file
                 shutil.move(path, appFile)
+
+    print(dt, ": Databases Successfully Extracted")
 
 
 def main():

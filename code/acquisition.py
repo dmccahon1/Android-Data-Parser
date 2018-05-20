@@ -43,7 +43,7 @@ def adbExtract():
             print(dt, ": .ab Successfully Converted to .tar")
             # Extract Tar File to RawDump
 
-            subprocess.call(["7za", "x", "android_backup/backup.tar", "-orawdump", "-aou"])
+            # subprocess.call(["7za", "x", "android_backup/backup.tar", "-orawdump", "-aou"])
         else:
             print("Error: .Tar File Not Found!")
     else:
