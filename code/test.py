@@ -1,5 +1,7 @@
 import subprocess
-import os
-working_directory = os.getcwd()
+import time
+import datetime
 
-subprocess.call(["7za", "x", "../android_backup/backup.tar", "-o../../rawdump", "-aou"], cwd=working_directory)
+t = datetime.datetime.now().strftime("%d/%m/%y %H:%M")
+
+print(t)

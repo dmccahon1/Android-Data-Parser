@@ -15,9 +15,12 @@ import subprocess
 
 def adbExtract():
     '''Create Android Backup File, Convert to Tar, Extract Files'''
-
+    # Tools
+    adb = './platform-tools/adb'
+    abe = './platform-tools/abe.jar'
+    unzip = './platform-tools/7za.exe'
     # Date and Time for Logs
-    dt = datetime.datetime.now()
+    dt = datetime.datetime.now().strftime("%d/%m/%y %H:%M")
     # Create Directory for ADB/Tar to go
     # If Directory Exists Delete .ab and .tar files for fresh extraction
     try:
@@ -27,23 +30,23 @@ def adbExtract():
             raise
     # List Attached Devices
     # os.system("start cmd.exe @cmd cd ./platform-tools & adb devices -l & exit")
-    subprocess.call(["adb", "devices", "-l"])
+    subprocess.call([adb, "devices", "-l"])
 
     # Create ADB File into directory ./android_backup
     # os.system("start cmd.exe @cmd /k cd ./platform-tools & adb backup -apk -shared -all -f E:/Dropbox/cyber_security/yr4/honours/script/android_backup/backup.ab & exit")
-    subprocess.call(["adb", "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"])
+    subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"])
 
     if os.path.isfile("android_backup/backup.ab") and os.path.getsize("android_backup/backup.ab") >= 1:
         print(dt, ": Android Backup Successfully Created")
         # Convert .ab file to .Tar
         print(dt, ": Converting Android backup to Tar")
         # os.system("start cmd.exe @cmd cd E:\Dropbox\cyber_security\yr4\honours\script & java -jar abe.jar unpack ./android_backup/backup.ab ./android_backup/backup.tar")
-        subprocess.call(["java", "-jar", "platform-tools/abe.jar", "unpack", "android_backup/backup.ab", "android_backup/backup.tar"])
+        subprocess.call(["java", "-jar", abe, "unpack", "android_backup/backup.ab", "android_backup/backup.tar"])
         if os.path.isfile("android_backup/backup.tar"):
             print(dt, ": .ab Successfully Converted to .tar")
             # Extract Tar File to RawDump
 
-            # subprocess.call(["7za", "x", "android_backup/backup.tar", "-orawdump", "-aou"])
+            subprocess.call([unzip, "x", "android_backup/backup.tar", "-orawdump", "-aou"])
         else:
             print("Error: .Tar File Not Found!")
     else:
