@@ -3,14 +3,10 @@
 # Author: David McCahon (40214392)
 # 2018 - 2019 Honours Project
 
-# Script: SQLiteAnalayis
-# Desc: Extract Database files from android devices and parse for analysis
-# Author: David McCahon (40214392)
-# 2018 - 2019 Honours Project
-
 import os
 import datetime
 import subprocess
+from tkinter import *
 
 
 def adbExtract():
@@ -31,7 +27,7 @@ def adbExtract():
     # List Attached Devices
     # os.system("start cmd.exe @cmd cd ./platform-tools & adb devices -l & exit")
     subprocess.call([adb, "devices", "-l"])
-
+    print(dt, ": Extracting Android Backup")
     # Create ADB File into directory ./android_backup
     # os.system("start cmd.exe @cmd /k cd ./platform-tools & adb backup -apk -shared -all -f E:/Dropbox/cyber_security/yr4/honours/script/android_backup/backup.ab & exit")
     subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"])
@@ -54,6 +50,7 @@ def adbExtract():
 
 
 def main():
+    # adbExtract()
     adbExtract()
 
 
