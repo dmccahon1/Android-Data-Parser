@@ -6,10 +6,10 @@
 import os
 import datetime
 import subprocess
-from tkinter import *
+import tkinter
 
 
-def adbExtract():
+def adbExtract(alert):
     '''Create Android Backup File, Convert to Tar, Extract Files'''
     # Tools
     adb = './platform-tools/adb'
@@ -44,9 +44,11 @@ def adbExtract():
 
             subprocess.call([unzip, "x", "android_backup/backup.tar", "-orawdump", "-aou"])
         else:
-            print("Error: .Tar File Not Found!")
+            alert.config(text="Error: .Tar File Not Found!")
+            # print("Error: .Tar File Not Found!")
     else:
         print("Error: .AB File Not Found!")
+        alert.tkinter.config(text="Error: .AB File Not Found!")
 
 
 def main():
