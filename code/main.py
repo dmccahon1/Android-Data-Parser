@@ -1,11 +1,10 @@
 import shutil
 from acquisition import adbExtract
-from search import dbSearch
 
 
 def clearFolders():
-    '''Clears androidbackup, rawdump and evidence folders'''
-    shutil.rmtree('androidbackup', ignore_errors=True)
+    '''Deletes androidbackup, rawdump and evidence folders'''
+    shutil.rmtree('android_backup', ignore_errors=True)
     shutil.rmtree('rawdump', ignore_errors=True)
     shutil.rmtree('evidence', ignore_errors=True)
 
@@ -13,7 +12,6 @@ def clearFolders():
 def main():
     clearFolders()
     adbExtract()
-    dbSearch()
 
 
 if __name__ == '__main__':
