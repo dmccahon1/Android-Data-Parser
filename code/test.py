@@ -7,7 +7,11 @@ import os
 import datetime
 import shutil
 
-def search():
+
+def fileSearch(folder):
+
+    now = str(datetime.datetime.now())
+    now = now.replace(":", "_")
 
     fileSig = {"PNG": "89 50 4E 47",
                 "JPEG": "FF D8 FF E0",
@@ -16,48 +20,47 @@ def search():
                 "MP3": "49 44 33",
                 "MOV": "6D 6F 6F 76",
                 "TIFF": "49 49 2A",
-                "GIF": 	"	47 49 46 3847 49 46 38"}
-
+                "GIF": 	"47 49 46 38"}
     fileFound = {}
     filePath = {}
-
-    for root, directories, files in os.walk('./test'):   # For all files in rawdump
+    for root, directories, files in os.walk(folder):   # For all files in rawdump
         for file in files:
             for key, value in fileSig.items():   # Iterate over File types & Sigs
-                path = os.path.join(root, file)   # Get the path for each file
-                print(path)
-                '''read = open(path, "rb").read(16)  # Read the first 16 bytes in binary
+                path = os.path.join(root, file)
+                read = open(path, "rb").read(16)  # Read the first 16 bytes in binary
                 hexBytes = " ".join(['{:02X}'.format(byte) for byte in read])  # Convert binary to hex
                 if hexBytes.startswith(value):   # If file sig is found, append to fileFound dict
                     if key in fileFound:
                         fileFound[key].append(file)
-                        filePath[key].append(path)  # Append filetype and filepath to filePath
+                        filePath[key].append(path)
                     else:
                         fileFound[key] = [file]
                         filePath[key] = [path]
-
     count = 1
-    for key, value in filePath.items():    # For each file found, create a directory for the file type
+    for key, value in filePath.items():
         for item in value:
             evidence = "evidence/"+key
-            path = "".join(value)  # List converted to string in order to be moved
-            print(path)
             try:
-                os.makedirs(evidence)  # For each filetype found, create an evidence directory
+                os.makedirs(evidence)
             except OSError:
                 if not os.path.isdir(evidence):
                     raise
             try:
-                shutil.move(item, evidence)  # Move source file to evidence folder
-            except:
-                rename = evidence
                 shutil.move(item, evidence)
-                count += 1'''
-
+            except shutil.Error as err:
+                homePath = os.path.abspath(os.path.join(__file__, "../../"))  # Gets home directory of application
+                absPath = homePath+"\\"+item
+                fileExtension = os.path.splitext(absPath)[1]
+                fileName = os.path.splitext(absPath)[0]
+                newName = fileName + " " + str(count) + " " + fileExtension
+                os.rename(absPath, fileName + " " + str(count) + " " + fileExtension)  # Rename file to file + date/time
+                shutil.move(newName, evidence)
+                count += 1
 
 
 def main():
-    search()
+    fileSearch("rawdump")
+    # filesRename("rawdump")
 
 
 if __name__ == '__main__':

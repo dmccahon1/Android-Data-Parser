@@ -60,6 +60,34 @@ def imgSearch():
 
     print(count,"images have been found!")
 
+def filesRename(folder):
+    '''Renames all files to filename+incremental count to avoid duplicate filenamesself.
+    This is due to different appliations using the same names, i.e icon, cache etc.
+    Attempted to rename as filename+datetime however in smaller tests searchin
+    g was to fast to change the name to be unique'''
+    now = str(datetime.datetime.now())
+    now = now.replace(":", "_")
+
+    count = 1
+    for root, directories, files in os.walk(folder):
+        for file in files:
+            count += 1
+            homePath = os.path.abspath(os.path.join(__file__, "../.."))  # Gets home directory of application
+            dirPath = homePath+"\\"+root
+            absPath = os.path.join(dirPath, file)   # Get the absolute path for each file
+            fileExtension = os.path.splitext(file)[1]  # Extract file extention & append to end of file
+            os.rename(absPath, absPath+"_"+str(count)+"_"+fileExtension)  # Rename file to file + date/time
+
+
+def fileRename(file):
+    '''Renames all files to filename+incremental count to avoid duplicate filenamesself.
+    This is due to different appliations using the same names, i.e icon, cache etc.
+    Attempted to rename as filename+datetime however in smaller tests searchin
+    g was to fast to change the name to be unique'''
+    now = str(datetime.datetime.now())
+    now = now.replace(":", "_")
+
+    print(file)
 
 def main():
     dbSearch()
