@@ -111,6 +111,7 @@ def fileSearch(folder):
 def main():
     clearFolders()
     adbExtract()
+    fileSearch()
 
 
 if __name__ == '__main__':
