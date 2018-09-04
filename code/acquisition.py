@@ -60,7 +60,7 @@ def adbExtract():
 
     print(dt+" Extracting Backup From Android Device\n", file=report)
     # Create ADB File into directory ./android_backup
-    subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"])
+    subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"], shell=True)
 
     if os.path.isfile("android_backup/backup.ab") and os.path.getsize("android_backup/backup.ab") >= 1:
         print(dt+" Android Backup Successfully Created", file=report)
