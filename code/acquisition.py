@@ -8,10 +8,8 @@ import datetime
 import subprocess
 import shutil
 # TODO: Fix date & time printing the same to file
-dt = datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")
-dt = dt+":\t "
+
 report = open("report.txt", "w+", 1)
-print(dt+"Script Started", file=report)
 
 # Platform Tools
 homePath = os.path.abspath(os.path.join(__file__, "../../platform-tools"))
@@ -33,47 +31,57 @@ fileSig = {"PNG": "89504E47",
             "GIF": 	"47494638"}
 
 
+def dt():
+    '''Generates date and time to be used in reports
+    Saves having to repeatly write out datetime for each line.'''
+    dt = datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")
+    dt = dt+":\t "
+    return(dt)
+
+
+print(dt()+"Script Started", file=report)
+
+
 def clearFolders():
     '''Deletes androidbackup, rawdump and evidence folders'''
     shutil.rmtree('android_backup', ignore_errors=True)
     shutil.rmtree('rawdump', ignore_errors=True)
     shutil.rmtree('evidence', ignore_errors=True)
 
-    print(dt+"Folders Successfully Cleared", file=report)
+    print(dt()+"Folders Successfully Cleared", file=report)
 
 
 def adbExtract():
     '''Create Android Backup File, Convert to Tar, Extract Files to RawDump'''
-    # Tools
+
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  Acquisition Stage\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    # TODO: Calculate time taken for each part in acquisition i.e 10mins to extract
 
-    # Create Directory for ADB/Tar to go
-    # If Directory Exists Delete .ab and .tar files for fresh extraction
-    try:
+    try:  # Create Directory for ADB/TAR files to go
         os.makedirs("android_backup")
-        print(dt+" Android Backup Folder Successfully Created", file=report)
-    except OSError:
+        print(dt()+" Android Backup Folder Successfully Created", file=report)
+    except OSError: # If directory already exists, ignore
         if not os.path.isdir("android_backup"):
             raise
 
-    print(dt+" Extracting Backup From Android Device\n", file=report)
-    # Create ADB File into directory ./android_backup
-    subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"], shell=True)
+    print(dt()+" Extracting Backup From Android Device\n", file=report)
+
+    subprocess.call([adb, "backup", "-apk", "-shared", "-all", "-f", "android_backup/backup.ab"])  # Generates android backup, outputs to android_backup
 
     if os.path.isfile("android_backup/backup.ab") and os.path.getsize("android_backup/backup.ab") >= 1:
-        print(dt+" Android Backup Successfully Created", file=report)
+        print(dt()+" Android Backup Successfully Created", file=report)  # If backup exists continue, otherwise stop
         # Convert .ab file to .Tar
-        print(dt, "Converting Android backup to Tar", file=report)
-        subprocess.call(["java", "-jar", abe, "unpack", "android_backup/backup.ab", "android_backup/backup.tar"])
+        print(dt(), "Converting Android backup to Tar", file=report)
+        subprocess.call(["java", "-jar", abe, "unpack", "android_backup/backup.ab", "android_backup/backup.tar"])  # Converts to tar
         if os.path.isfile("android_backup/backup.tar"):
-            print(dt+" Android Backup Successfully Converted to Tar", file=report)
+            print(dt()+" Android Backup Successfully Converted to Tar", file=report)
             # Extract Tar File to RawDump
-            print(dt+" Extracting Tar File to RawDump", file=report)
-            quiet = open(os.devnull, "w")
+            print(dt()+" Extracting Tar File to RawDump", file=report)
+            quiet = open(os.devnull, "w")  # Unzipping generates unrequired output, silence by diverting to null
             subprocess.call([unzip, "x", "android_backup/backup.tar", "-orawdump", "-aou"], stdout=quiet)
-            print(dt+" Android Backup Successfully Extracted to Rawdump", file=report)
+            print(dt()+" Android Backup Successfully Extracted to Rawdump", file=report)
 
             totalFiles = 0
 
@@ -81,31 +89,27 @@ def adbExtract():
                 for file in files:
                     totalFiles += 1
 
-            print(dt+"{} Files Have Been Found\n".format(str(totalFiles))+dt+" Acquistion Complete", file=report)
+            print(dt()+"{} Files Have Been Found\n".format(str(totalFiles))+dt()+" Acquistion Complete", file=report)
         else:
-            print(dt+" ERROR: .Tar File Not Found!", file=report)
+            print(dt()+" ERROR: .Tar File Not Found!", file=report)  # ADB not converted to Tar / Not Found
     else:
-        print(dt+" ERROR: .AB File Not Found", file=report)
+        print(dt()+" ERROR: .AB File Not Found", file=report)  # Backup not created / Not Found
 
 
 def fileSigAnalysis(folder):
     '''Searches for files within rawdump and matches to stored file filesignature '''
-
-    now = str(datetime.datetime.now())
-    now = now.replace(":", "_")
-
-    for root, directories, files in os.walk(folder):   # For all files in rawdump
+    for root, directories, files in os.walk(folder):   # For folders/files in rawdump
         for file in files:
-            for key, value in fileSig.items():   # Iterate over File types & Sigs
+            for key, value in fileSig.items():   # Iterate over File types & Signatures
                 path = os.path.join(root, file)
-                sigLen = int(len(value)/2)
-                read = open(path, "rb").read(sigLen)  # Read the first 16 bytes in binary
+                sigLen = int(len(value)/2)  # Divide length of signature by 2 to read in bytes, i.e length 16 = 8bytes
+                read = open(path, "rb").read(sigLen)  # Read for length of signature
                 hexBytes = " ".join(['{:02X}'.format(byte) for byte in read])  # Convert binary to hex
-                stripBytes = hexBytes.replace(" ", "")
+                stripBytes = hexBytes.replace(" ", "")  # Strip all spaces, required due to having to strip spaces in dict to calcuate bytes
                 if stripBytes.startswith(value):   # If file sig is found, append to fileFound dict
                     if key in fileFound:
-                        fileFound[key].append(file)
-                        filePath[key].append(path)
+                        fileFound[key].append(file)  # Append key: file to fileFound dictionary
+                        filePath[key].append(path)   # Append key: path to filePath
                     else:
                         fileFound[key] = [file]
                         filePath[key] = [path]
@@ -129,20 +133,21 @@ def evidenceGathering():
             except shutil.Error as err:  # if duplicate name, file is renamed an then moved
                 homePath = os.path.abspath(os.path.join(__file__, "../../"))  # Gets home directory of application
                 absPath = homePath+"\\"+item
-                fileExtension = os.path.splitext(item)[1]
+                fileExtension = os.path.splitext(item)[1]  # Get the file extension from name, later append back after rename
                 fileName = os.path.splitext(item)[0]
                 oldName = fileName + fileExtension
                 newName = fileName + str(count) + fileExtension  # Stores new filename and path, required as os.rename does not hold data and returns nonetype
                 if key not in dupFiles:
-                    dupFiles[key] = {}
-                dupFiles[key].update({oldName: newName})
-                os.rename(absPath, fileName + str(count) + fileExtension)  # Rename file to file + date/time
+                    dupFiles[key] = {}  # Create nested dictionary
+                dupFiles[key].update({oldName: newName})     #  e.g  {png : {test.png : test1.png}}
+                os.rename(absPath, fileName + str(count) + fileExtension)  # Rename file to file + count + extension
                 shutil.move(newName, evidence)
                 count += 1
 
 
 def reportGen():
-    '''Blaa Blaa'''
+    '''Creates file signature section within report including file types searched, file
+    types found and duplicate file information - how many, file old + new name'''
 
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  File Signature Analysis\n", file=report)
@@ -177,8 +182,6 @@ def reportGen():
         for old, new in value.items():
             print("\t\t\t\t{} has been renamed to {}".format(old, new), file=report)
 
-    # TODO: Get device, android version, size of backup, total files
-
 
 def deviceInfo():
     '''Gets information about connected device
@@ -205,8 +208,8 @@ def deviceInfo():
 
 
 def main():
-    clearFolders()
-    adbExtract()
+    # clearFolders()
+    # adbExtract()
     fileSigAnalysis("rawdump")
     evidenceGathering()
     reportGen()
