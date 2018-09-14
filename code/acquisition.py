@@ -89,7 +89,7 @@ def adbExtract():
                 for file in files:
                     totalFiles += 1
 
-            print(dt()+"{} Files Have Been Found\n".format(str(totalFiles))+dt()+" Acquistion Complete", file=report)
+            print(dt()+" {} Files Have Been Found\n".format(str(totalFiles))+dt()+" Acquisition Complete", file=report)
         else:
             print(dt()+" ERROR: .Tar File Not Found!", file=report)  # ADB not converted to Tar / Not Found
     else:
@@ -139,7 +139,7 @@ def evidenceGathering():
                 newName = fileName + str(count) + fileExtension  # Stores new filename and path, required as os.rename does not hold data and returns nonetype
                 if key not in dupFiles:
                     dupFiles[key] = {}  # Create nested dictionary
-                dupFiles[key].update({oldName: newName})     #  e.g  {png : {test.png : test1.png}}
+                dupFiles[key].update({oldName: newName})     # e.g  {png : {test.png : test1.png}}
                 os.rename(absPath, fileName + str(count) + fileExtension)  # Rename file to file + count + extension
                 shutil.move(newName, evidence)
                 count += 1
