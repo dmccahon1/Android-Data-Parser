@@ -23,13 +23,14 @@ filePath = {}
 dupFiles = {}
 fileSig = {"PNG": "89504E47",
             "JPEG": "FFD8FFE0",
-            "JPG" : "FFD8FFE1",
-            "AVI": "52484646",
+            "JPG": "FFD8FFE1",
             "DB": "53514C69746520666F726D6174203300",
             "MP3": "494433",
-            "MOV": "6D6F6F76",
+            "MP4": "0000001866747970",
             "TIFF": "49492A",
-            "GIF": 	"47494638"}
+            "GIF": 	"47494638",
+            "Sound Recordings": "FFF94C80",
+            "PDF": "25504446"}
 
 
 def dt():
@@ -70,8 +71,8 @@ def adbExtract():
             raise
         if not os.path.isdir("rawdump/storage"):
             raise
-    subprocess.call([adb, "pull", "sdcard/", "rawdump/sdcard/",])
-    subprocess.call([adb, "pull", "storage/", "rawdump/storage/",])
+    subprocess.call([adb, "pull", "sdcard/", "rawdump/sdcard/", ])
+    # subprocess.call([adb, "pull", "storage/", "rawdump/storage/", ])
     totalFiles = 0
     for root, directories, files in os.walk("rawdump/sdcard"):
         for file in files:
@@ -80,11 +81,11 @@ def adbExtract():
     print(dt()+" {} Files Have Been Found\n".format(str(totalFiles))+dt()+" Acquisition Complete", file=report)
 
 
-
 def fileSigAnalysis(folder):
     '''Searches for files within rawdump and matches to stored file filesignature '''
 
     # TODO: JPEG finds CNT files
+    print("FileSig Started")
     for root, directories, files in os.walk(folder):   # For folders/files in rawdump
         for file in files:
             for key, value in fileSig.items():   # Iterate over File types & Signatures
