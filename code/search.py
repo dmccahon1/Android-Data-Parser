@@ -8,6 +8,7 @@ import os
 import shutil
 import pathlib
 
+report = open("report.txt", "w+", 1)
 
 def dbSearch():
     '''Searches for Database files within rawdump, moves to evidence'''
