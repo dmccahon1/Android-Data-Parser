@@ -8,6 +8,8 @@ import datetime
 import subprocess
 import shutil
 import sqlite3
+import glob
+import json
 
 report = open("report.txt", "w+", 1)
 
@@ -438,6 +440,46 @@ def whatsAppQuery():
         print(dt(), "[ERROR] WhatsApp Database not found", file=report)
 
 
+def skypeQuery():
+    '''Extract contacts and messages from skype Database'''
+    db = glob.glob("evidence/Databases/Skype/*live*.db")
+    for file in db:
+        if os.path.isfile(file):
+            connect = sqlite3.connect(file)
+            print(dt(), "Connection made to WhatsApp Database", file=report)
+            cur = connect.cursor()
+            cur.execute("SELECT nsp_data from localaddressbookcontacts")
+            contacts = cur.fetchall()
+            print(dt(), "Skype has the Following Contacts:", file=report)
+            for row in contacts:
+                for line in row:
+                    data = json.loads(line)
+                    for key, value in data.items():
+                        target = ["firstName", "middleName", "lastName", "phones"]
+                        if key in target:
+                            print("\t", key, ":", value, file=report)
+                    print("\n", file=report)
+
+            cur.execute("SELECT nsp_data from messagesv12")
+            messages = cur.fetchall()
+            print(dt(), "The following messages have been found:", file=report)
+            for row in messages:
+                for line in row:
+                    msg = json.loads(line)
+                    if msg["conversationId"] == msg["creator"]:
+                        print("\tMessage received from", msg["conversationId"], file=report)
+                    else:
+                        print("\tMessage sent to", msg["conversationId"], file=report)
+                    for key, value in msg.items():
+                        target = ["createdTime", "content", "messagetype"]
+                        if key in target:
+                            print("\t"+key, ":", value, file=report)
+                print("\n", file=report)
+
+        else:
+            print(dt(), "[ERROR] Skype Database not found", file=report)
+
+
 def main():
     connCheck = subprocess.check_output([adb, "devices"], universal_newlines=True)
     # Only run script if device is connected & authorised
@@ -445,7 +487,6 @@ def main():
             clearFolders()
             deviceInfo()
             adbExtract()
-            deviceInfo()
             fileSigAnalysis("rawdump")
             evidenceGathering()
             fileFoundGen()
@@ -454,6 +495,7 @@ def main():
             chromeQuery()
             smsQuery()
             whatsAppQuery()
+            skypeQuery()
 
     elif ("unauthorized" in connCheck):
         print("[ERROR] Device Unauthorized")

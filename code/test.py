@@ -7,6 +7,8 @@ import subprocess
 import os
 import datetime
 import sqlite3
+import glob
+import json
 
 report = open("report.txt", "w+", 1)
 
@@ -21,53 +23,49 @@ def dt():
     return(dt)
 
 
-def whatsAppQuery():
-    '''Extract SMS messages from SMS Database'''
-    db = ("evidence/Databases/WhatsApp/msgstore.db")
+def skypeQuery():
+    '''Extract contacts and messages from skype Database'''
+    db = glob.glob("evidence/Databases/Skype/*live*.db")
+    for file in db:
+        if os.path.isfile(file):
+            connect = sqlite3.connect(file)
+            print(dt(), "Connection made to WhatsApp Database", file=report)
+            cur = connect.cursor()
+            cur.execute("SELECT nsp_data from localaddressbookcontacts")
+            contacts = cur.fetchall()
+            print(dt(),"Skype has the Following Contacts:", file=report)
+            for row in contacts:
+                for line in row:
+                    data = json.loads(line)
+                    for key, value in data.items():
+                        target = ["firstName", "middleName", "lastName", "phones"]
+                        if key in target:
+                            print("\t",key,":", value,file=report)
+                    print("\n",file=report)
 
-    if os.path.isfile(db):
-        connect = sqlite3.connect(db)
-        print(dt(), "Connection made to WhatsApp Database", file=report)
-        cur = connect.cursor()
-        cur.execute("SELECT key_remote_jid, key_from_me,data,timestamp  from messages where data IS NOT NULL")
-        messages = cur.fetchall()
-        print("The following messages have been sent/received via WhatsApp", file=report)
-        for row in messages:
-            contact = row[0]
-            type = row[1]
-            message = row[2]
-            date = row[3]
+            cur.execute("SELECT nsp_data from messagesv12")
+            messages = cur.fetchall()
+            print(dt(), "The following messages have been found:", file=report)
+            for row in messages:
+                for line in row:
+                    msg = json.loads(line)
+                    if msg["conversationId"] == msg["creator"]:
+                        print("\tMessage received from", msg["conversationId"],file=report)
+                    else:
+                        print("\tMessage sent to", msg["conversationId"], file=report)
+                    for key,value in msg.items():
+                        target=["createdTime","content","messagetype"]
+                        if key in target:
+                            print("\t"+key,":",value, file=report)
+                print("\n",file=report)
 
-            if type == 1:
-                print("\tMessage sent to", contact, file=report)
-            else:
-                print("\tMessage received from", contact, file=report)
-            print("\tMessage:",message, file=report)
-            print("\tDate/Time:", date,"\n", file=report)
-
-        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
-        media = cur.fetchall()
-        print(dt(),"The following media has been sent/received via WhatsApp:", file=report)
-        for row in media:
-            contact = row[0]
-            type = row[1]
-            url = row[2]
-            timestamp = row[3]
-
-            if type == 1:
-                print("\tMedia sent to", contact, file=report)
-            else:
-                print("\tMedia received from", contact, file=report)
-            print("\tMedia URL:", url, file=report)
-            print("\tDate/Time:", date, "\n",file=report)
-
-    else:
-        print(dt(),"[ERROR] SMS Database not found",file=report)
+        else:
+            print(dt(),"[ERROR] Skype Database not found",file=report)
 
 
 
 def main():
-    whatsAppQuery()
+    skypeQuery()
 
 
 if __name__ == '__main__':
