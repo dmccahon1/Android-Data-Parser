@@ -499,6 +499,7 @@ def main():
 
     elif ("unauthorized" in connCheck):
         print("[ERROR] Device Unauthorized")
+
     else:
         print("[ERROR] No Device Connected")
 
