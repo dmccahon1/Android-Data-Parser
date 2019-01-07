@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import glob
 import json
+import time
 
 report = open("report.txt", "w+", 1)
 
@@ -210,7 +211,7 @@ def databaseExtract():
             bType = key.encode()  # Convert type to Bytes
             procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
             procId.communicate(b'su\nmkdir -p /sdcard/Databases/%s\ncp %s /sdcard/Databases/%s/ >> /dev/null \nexit\nexit' % (bType, bPath, bType))  # Make Directories, Copy file to temporary directory
-            print("\t %s database is being copied from %s to /sdcard/databases/%s" % (key, path, key), file=report)
+            print("\t\t %s database is being copied from %s to /sdcard/databases/%s" % (key, path, key), file=report)
 
     # rename skype databases to remove special character
     print("\n"+dt(), "Databases have been copied to sdcard/databases", file=report)
@@ -238,6 +239,67 @@ def databaseExtract():
     print(dt(), "%d Databases have been successfully extracted\n" % (totalFiles), file=report)
 
 
+def accountQuery():
+    '''Extract SMS messages from SMS Database'''
+    db = ("evidence/Databases/ContactCall/contacts2.db")
+
+    if os.path.isfile(db):
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        print("                 Account Information\n", file=report)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        connect = sqlite3.connect(db)
+        print(dt(), "Connection made to Account Database", file=report)
+        cur = connect.cursor()
+        cur.execute("SELECT account_name FROM Accounts")
+        contact = cur.fetchall()
+        print(dt()+"The following accounts have been found:", file=report)
+        for row in contact:
+            account = row[0]
+            print("\t\t"+account, file=report)
+    else:
+        print("[ERROR] Contact Database Could Not Be Found", file=report)
+
+
+def contactQuery():
+    '''Extract SMS messages from SMS Database'''
+    db = ("evidence/Databases/ContactCall/contacts2.db")
+
+    if os.path.isfile(db):
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        print("                 Contact Information\n", file=report)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        connect = sqlite3.connect(db)
+        print(dt(), "Connection made to SMS Database", file=report)
+        cur = connect.cursor()
+        cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
+        contact = cur.fetchall()
+        print(dt()+"The following contacts have been found:", file=report)
+        for row in contact:
+            print("\t\tName:", row[1], file=report)
+
+            if(type(row[2]) == str):
+                print("\t\tNumber:",row[2].replace("|",""), file=report)
+            else:
+                print("\t\tNumber: None", file=report)
+
+            print("\t\tNo. Times Contacted:", row[3], file=report)
+
+            if(type(row[4]) == str):
+                print("\t\tEmail:",row[4].replace("|",""), file=report)
+            else:
+                print("\t\tEmail: None", file=report)
+
+            if(type(row[5]) == str):
+                print("\t\tAddress:",row[5].replace("|",""), file=report)
+            else:
+                print("\t\tAddress: None", file=report)
+            print("\t\tNotes:", row[6], file=report)
+            print("\n", file=report)
+
+    else:
+        print("[ERROR] Contact Database Could Not Be Found", file=report)
+
+
 def calendarQuery():
     '''Extract calendar entries from calendar database'''
     db = ("evidence/Databases/Calendar/calendar.db")
@@ -256,44 +318,24 @@ def calendarQuery():
 
         print(dt(), "Calendar Contains the Following Accounts:", file=report)
         for row in accounts:
-            print("\t", row[0], file=report)
+            print("\t\t", row[0], file=report)
 
         # Event Information
-        cur.execute("SELECT title,allDay,EventsRawTimes.dtstart2445,EventsRawTimes.dtend2445 FROM Events JOIN EventsRawTimes on Events._id == EventsRawTimes.event_id ORDER BY dtstart2445;")
+        cur.execute("SELECT title,allDay,EventsRawTimes.dtstart2445,EventsRawTimes.dtend2445,eventLocation FROM Events JOIN EventsRawTimes on Events._id == EventsRawTimes.event_id ORDER BY dtstart2445;")
         events = cur.fetchall()
         print("\n"+dt(), "Calendar Contains the Following Events:", file=report)
         for row in events:
-            title = row[0]
-            allDay = row[1]
-            startTime = row[2]
-            endTime = row[3]
-
             # Date / Time Decoding
-            # Start Date/Time
-            # TODO: Create function to decode data/time
-            sYear = startTime[0]+startTime[1]+startTime[2]+startTime[3]
-            sMonth = startTime[4]+startTime[5]
-            sDay = startTime[6]+startTime[7]
-            sDate = (sDay+"/"+sMonth+"/"+sYear)
-            sHour = startTime[9]+startTime[10]
-            sMinute = startTime[11]+startTime[12]
-            sSecond = startTime[13]+startTime[14]
-            sTime = (sHour+":"+sMinute+":"+sSecond)
+            sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+            sDT = sDT.strftime("%d-%m-%Y %H:%M")
 
-            # End Date/Time
-            eYear = endTime[0]+endTime[1]+endTime[2]+endTime[3]
-            eMonth = endTime[4]+endTime[5]
-            eDay = endTime[6]+endTime[7]
-            eDate = (eDay+"/"+eMonth+"/"+eYear)
-            eHour = endTime[9]+endTime[10]
-            eMinute = endTime[11]+endTime[12]
-            eSecond = endTime[13]+endTime[14]
-            eTime = (eHour+":"+eMinute+":"+eSecond)
+            eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
+            eDT = eDT.strftime("%d-%m-%Y %H:%M")
 
-            if (allDay == 1):
-                print("\t\t", title, sDate, "-", eDate, "All Day Event", file=report)
+            if (row[1] == 1):
+                print("\t\t", row[0], sDT, "All Day Event", "@", row[4], file=report)
             else:
-                print("\t\t", title, sDate, sTime, "-", eDate, eTime, file=report)
+                print("\t\t", row[0], sDT, "-", eDT, " @ ", row[4], file=report)
 
     else:
         print("[ERROR] Calendar Database not found")
@@ -321,45 +363,30 @@ def chromeQuery():
         cur.execute("SELECT target_path, start_time, mime_type,tab_url,total_bytes FROM downloads;")
         downloads = cur.fetchall()
 
-        print(dt(), "The following files have been downloaded from Chrome:", file=report)
+        print(dt() + "The following files have been downloaded from Chrome:", file=report)
         for row in downloads:
-            path = row[0]
-            time = row[1]
-            type = row[2]
-            url = row[3]
-            size = row[4]
-
-            timeDecode = chromeDateTimeConv(time)
-            print("\t File Type:", type, file=report)
-            print("\t Download Path:", path, file=report)
-            print("\t Downloaded From:", url, file=report)
-            print("\t Time:", timeDecode, file=report)
-            print("\t Total Bytes:", size, "\n", file=report)
+            print("\t\t File Type:", row[2], file=report)
+            print("\t\t Download Path:", row[0], file=report)
+            print("\t\t Downloaded From:", row[3], file=report)
+            print("\t\t Time:", chromeDateTimeConv(row[1]), file=report)
+            print("\t\t Total Bytes:", row[4], "\n", file=report)
 
         cur.execute("SELECT DISTINCT term from keyword_search_terms;")
         keyword = cur.fetchall()
 
         print(dt(), "The Following search terms have been searched:", file=report)
         for row in keyword:
-            term = row[0]
-            print("\t", term, file=report)
+            print("\t\t", row[0], file=report)
 
         cur.execute("SELECT DISTINCT url,title, visit_count,last_visit_time  from urls;")
         urls = cur.fetchall()
 
         print("\n"+dt(), "The Following URLs have been visited", file=report)
         for row in urls:
-            url = row[0]
-            title = row[1]
-            visit_count = row[2]
-            time = row[3]
-
-            timeDecode = chromeDateTimeConv(time)
-
-            print("\t Title:", title, file=report)
-            print("\t URL:", url, file=report)
-            print("\t Visit Count: ", visit_count, file=report)
-            print("\t Time:", timeDecode, "\n", file=report)
+            print("\t\t Title:", row[1], file=report)
+            print("\t\t URL:", row[0], file=report)
+            print("\t\t Visit Count: ", row[2], file=report)
+            print("\t\t Time:", chromeDateTimeConv(row[3]), "\n", file=report)
 
     else:
         print(dt(), "[ERROR] Chrome Database not found", file=report)
@@ -368,11 +395,11 @@ def chromeQuery():
 def smsQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/sms/mmssms.db")
-
+    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    print("                  SMS Data\n", file=report)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     if os.path.isfile(db):
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-        print("                  SMS Data\n", file=report)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+
         connect = sqlite3.connect(db)
         print(dt(), "Connection made to SMS Database", file=report)
         cur = connect.cursor()
@@ -380,17 +407,17 @@ def smsQuery():
         sms = cur.fetchall()
 
         for row in sms:
-            contact = row[0]
-            date = row[1]
-            type = row[2]
-            message = row[3]
-
-            if type == 1:
-                print("\tMessage Received from:", contact, file=report)
+            if row[2] == 1:
+                print("\t\tMessage Received from:", row[0], file=report)
             else:
-                print("\tMessage Sent to:", contact, file=report)
-            print("\tDate:", date, file=report)
-            print("\tMessage:", message, "\n", file=report)
+                print("\t\tMessage Sent to:", row[0], file=report)
+
+            date = str(row[1])
+            nDate = date[:-3]
+
+            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+            print("\t\tDate:", conv, file=report)
+            print("\t\tMessage:", row[3], "\n", file=report)
 
     else:
         print(dt(), "[ERROR] SMS Database not found", file=report)
@@ -398,6 +425,9 @@ def smsQuery():
 
 def whatsAppQuery():
     '''Extract SMS messages from SMS Database'''
+    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    print("                  WhatsApp Data\n", file=report)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     db = ("evidence/Databases/WhatsApp/msgstore.db")
 
     if os.path.isfile(db):
@@ -408,33 +438,28 @@ def whatsAppQuery():
         messages = cur.fetchall()
         print("The following messages have been sent/received via WhatsApp", file=report)
         for row in messages:
-            contact = row[0]
-            type = row[1]
-            message = row[2]
-            date = row[3]
-
-            if type == 1:
-                print("\tMessage sent to", contact, file=report)
+            if row[1] == 1:
+                print("\t\tMessage sent to", row[0], file=report)
             else:
-                print("\tMessage received from", contact, file=report)
-            print("\tMessage:", message, file=report)
-            print("\tDate/Time:", date, "\n", file=report)
+                print("\t\tMessage received from", row[0], file=report)
+            print("\t\tMessage:", row[2], file=report)
+            print("\t\tDate/Time:", row[3], "\n", file=report)
 
         cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
         media = cur.fetchall()
         print(dt(), "The following media has been sent/received via WhatsApp:", file=report)
         for row in media:
-            contact = row[0]
-            type = row[1]
-            url = row[2]
-            date = row[3]
-
-            if type == 1:
-                print("\tMedia sent to", contact, file=report)
+            if row[1] == 1:
+                print("\t\tMedia sent to", row[0], file=report)
             else:
-                print("\tMedia received from", contact, file=report)
-            print("\tMedia URL:", url, file=report)
-            print("\tDate/Time:", date, "\n", file=report)
+                print("\t\tMedia received from", row[0], file=report)
+            print("\t\tMedia URL:", row[2], file=report)
+            date = str(row[3])
+            nDate = date[:-3]
+
+            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+            print("\t\tDate:", conv, file=report)
+            print("\t\tDate/Time:", nDate, "\n", file=report)
 
     else:
         print(dt(), "[ERROR] WhatsApp Database not found", file=report)
@@ -442,6 +467,9 @@ def whatsAppQuery():
 
 def skypeQuery():
     '''Extract contacts and messages from skype Database'''
+    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    print("                  Skype Data\n", file=report)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     db = glob.glob("evidence/Databases/Skype/*live*.db")
     for file in db:
         if os.path.isfile(file):
@@ -457,7 +485,7 @@ def skypeQuery():
                     for key, value in data.items():
                         target = ["firstName", "middleName", "lastName", "phones"]
                         if key in target:
-                            print("\t", key, ":", value, file=report)
+                            print("\t\t", key, ":", value, file=report)
                     print("\n", file=report)
 
             cur.execute("SELECT nsp_data from messagesv12")
@@ -467,13 +495,16 @@ def skypeQuery():
                 for line in row:
                     msg = json.loads(line)
                     if msg["conversationId"] == msg["creator"]:
-                        print("\tMessage received from", msg["conversationId"], file=report)
+                        print("\t\tMessage received from", msg["conversationId"], file=report)
                     else:
-                        print("\tMessage sent to", msg["conversationId"], file=report)
+                        print("\t\tMessage sent to", msg["conversationId"], file=report)
                     for key, value in msg.items():
                         target = ["createdTime", "content", "messagetype"]
                         if key in target:
-                            print("\t"+key, ":", value, file=report)
+                            print("\t\t"+key, ":", value, file=report)
+                    time = datetime.datetime.strptime(msg["_serverMessages"][0]["originalarrivaltime"][:-8], "%Y-%m-%dT%H:%M")
+                    print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"), file=report)
+
                 print("\n", file=report)
 
         else:
@@ -491,9 +522,11 @@ def main():
             evidenceGathering()
             fileFoundGen()
             databaseExtract()
+            contactQuery()
+            smsQuery()
+            accountQuery()
             calendarQuery()
             chromeQuery()
-            smsQuery()
             whatsAppQuery()
             skypeQuery()
 

@@ -9,6 +9,7 @@ import datetime
 import sqlite3
 import glob
 import json
+import time
 
 report = open("report.txt", "w+", 1)
 
@@ -23,49 +24,37 @@ def dt():
     return(dt)
 
 
-def skypeQuery():
-    '''Extract contacts and messages from skype Database'''
-    db = glob.glob("evidence/Databases/Skype/*live*.db")
-    for file in db:
-        if os.path.isfile(file):
-            connect = sqlite3.connect(file)
-            print(dt(), "Connection made to WhatsApp Database", file=report)
-            cur = connect.cursor()
-            cur.execute("SELECT nsp_data from localaddressbookcontacts")
-            contacts = cur.fetchall()
-            print(dt(),"Skype has the Following Contacts:", file=report)
-            for row in contacts:
-                for line in row:
-                    data = json.loads(line)
-                    for key, value in data.items():
-                        target = ["firstName", "middleName", "lastName", "phones"]
-                        if key in target:
-                            print("\t",key,":", value,file=report)
-                    print("\n",file=report)
+def fileFoundGen():
+    '''Creates file signature section within report including file types searched, file
+    types found and duplicate file information - how many, file old + new name'''
 
-            cur.execute("SELECT nsp_data from messagesv12")
-            messages = cur.fetchall()
-            print(dt(), "The following messages have been found:", file=report)
-            for row in messages:
-                for line in row:
-                    msg = json.loads(line)
-                    if msg["conversationId"] == msg["creator"]:
-                        print("\tMessage received from", msg["conversationId"],file=report)
-                    else:
-                        print("\tMessage sent to", msg["conversationId"], file=report)
-                    for key,value in msg.items():
-                        target=["createdTime","content","messagetype"]
-                        if key in target:
-                            print("\t"+key,":",value, file=report)
-                print("\n",file=report)
+    # TODO: Add list of applications installed on device?  Ugly output, extract required information?
 
-        else:
-            print(dt(),"[ERROR] Skype Database not found",file=report)
+    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    print("                  File Signature Searching\n", file=report)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
 
+    print("{} file types have been searched for: ".format(len(fileSig)), file=report)
+    for key, value in fileSig.items():
+        print("\t\t"+key, file=report)
 
+    totalFiles = 0
+
+    print("\n{} file types have successfully been found:".format(len(fileFound)), file=report)
+    for key, value in fileFound.items():
+        print("\t\t"+key, file=report)
+        for found in value:
+            totalFiles += 1
+
+    print("\n{} Files have successfully been found:".format(totalFiles), file=report)
+
+    for key, value in fileFound.items():
+        print("\t\t {} ".format(len(value))+key+" files have been found", file=report)
+        for file, path in value.items():
+            print("\t\t\t\t {} : {}".format(file, path), file=report)
 
 def main():
-    skypeQuery()
+    fileFoundGen()
 
 
 if __name__ == '__main__':
