@@ -54,7 +54,7 @@ def clearFolders():
     shutil.rmtree('rawdump', ignore_errors=True)
     shutil.rmtree('evidence', ignore_errors=True)
 
-    print(dt(),"Folders Successfully Cleared", file=report)
+    print(dt(), "Folders Successfully Cleared", file=report)
 
 
 def deviceInfo():
@@ -73,7 +73,6 @@ def deviceInfo():
         print("Model: "+devModel, file=report)
         androidVersion = subprocess.check_output([adb, "shell", "getprop", "ro.build.version.release"]).decode()
         print("Android Version: "+androidVersion, file=report)
-        platPath = os.path.abspath(os.path.join(__file__, "../../android_backup"))
     except subprocess.CalledProcessError:
         print("[ERROR]: No Device Connected", file=report)
 
@@ -97,7 +96,6 @@ def adbExtract():
     print(dt(), "Extracting Shared Storage")
     subprocess.call([adb, "pull", "sdcard/", "rawdump/sdcard/", ])
     print(dt(), "Shared Storage Successfully Extracted", file=report)
-    # subprocess.call([adb, "pull", "storage/", "rawdump/storage/", ])
     totalFiles = 0
     for root, directories, files in os.walk("rawdump/sdcard"):
         for file in files:
@@ -112,7 +110,7 @@ def fileSigAnalysis(folder):
     '''Searches for files within rawdump and matches to stored file filesignature '''
 
     # TODO: JPEG finds CNT files
-    print(dt(),"Analysing File Signatures")
+    print(dt(), "Analysing File Signatures")
     for root, directories, files in os.walk(folder):   # For folders/files in rawdump
         for file in files:
             for key, value in fileSig.items():   # Iterate over File types & Signatures
@@ -130,7 +128,7 @@ def fileSigAnalysis(folder):
 def evidenceGathering():
     '''Moves evidence to an evidence folder for each found filetype
     Renames duplicate files to avoid errors'''
-    print(dt(),"Gathering Evidence")
+    print(dt(), "Gathering Evidence")
     for key, value in fileFound.items():
         for item in value:
             evidence = "evidence/"+key
@@ -151,7 +149,7 @@ def fileFoundGen():
     types found and duplicate file information - how many, file old + new name'''
 
     # TODO: Add list of applications installed on device?  Ugly output, extract required information?
-    print(dt(),"Generating Files Acquired Report Section",)
+    print(dt(), "Generating Files Acquired Report Section",)
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  File Signature Searching\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -202,12 +200,12 @@ def databaseExtract():
     "/data/data/com.android.providers.telephony/databases/mmssms.db"],
     "ContactCall": ["/data/data/com.android.providers.contacts/databases/contacts2.db"],
     "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db"],
-    "WhatsApp" : ["data/data/com.whatsapp/databases/msgstore.db"],
-    "Chrome" : ["/data/data/com.android.chrome/app_chrome/Default/History"],
-    "Skype" : ["/data/data/com.skype.raider/databases/*live*.db"]}
+    "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db"],
+    "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History"],
+    "Skype": ["/data/data/com.skype.raider/databases/*live*.db"]}
 
     # TODO: Fix for Samsung Device
-    print(dt(),"Moving Databases to SDCARD")
+    print(dt(), "Moving Databases to SDCARD")
     print(dt(), "Trying to copy databases to /sdcard/databases", file=report)
     for key, value in target.items():
         for path in value:
@@ -246,7 +244,7 @@ def databaseExtract():
 def accountQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
-    print(dt(),"Querying Account Databases")
+    print(dt(), "Querying Account Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                 Account Information\n", file=report)
@@ -267,7 +265,7 @@ def accountQuery():
 def contactQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
-    print(dt(),"Querying Contact Databases")
+    print(dt(), "Querying Contact Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                 Contact Information\n", file=report)
@@ -282,19 +280,19 @@ def contactQuery():
             print("\t\tName:", row[1], file=report)
 
             if(type(row[2]) == str):
-                print("\t\tNumber:",row[2].replace("|",""), file=report)
+                print("\t\tNumber:", row[2].replace("|", ""), file=report)
             else:
                 print("\t\tNumber: None", file=report)
 
             print("\t\tNo. Times Contacted:", row[3], file=report)
 
             if(type(row[4]) == str):
-                print("\t\tEmail:",row[4].replace("|",""), file=report)
+                print("\t\tEmail:", row[4].replace("|", ""), file=report)
             else:
                 print("\t\tEmail: None", file=report)
 
             if(type(row[5]) == str):
-                print("\t\tAddress:",row[5].replace("|",""), file=report)
+                print("\t\tAddress:", row[5].replace("|", ""), file=report)
             else:
                 print("\t\tAddress: None", file=report)
             print("\t\tNotes:", row[6], file=report)
@@ -307,7 +305,7 @@ def contactQuery():
 def calendarQuery():
     '''Extract calendar entries from calendar database'''
     db = ("evidence/Databases/Calendar/calendar.db")
-    print(dt(),"Querying Calendar Databases")
+    print(dt(), "Querying Calendar Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                  Calendar Data\n", file=report)
@@ -330,11 +328,22 @@ def calendarQuery():
         print("\n"+dt(), "Calendar Contains the Following Events:", file=report)
         for row in events:
             # Date / Time Decoding
-            sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-            sDT = sDT.strftime("%d-%m-%Y %H:%M")
+            # Works on P20
+            try:
+                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+                sDT = sDT.strftime("%d-%m-%Y %H:%M")
 
-            eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
-            eDT = eDT.strftime("%d-%m-%Y %H:%M")
+                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
+                eDT = eDT.strftime("%d-%m-%Y %H:%M")
+
+            except:
+                # Except error, some phones format with Z on end
+                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%SZ")
+                sDT = sDT.strftime("%d-%m-%Y %H:%M")
+
+                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%SZ")
+                eDT = eDT.strftime("%d-%m-%Y %H:%M")
+
 
             if (row[1] == 1):
                 print("\t\t", row[0], sDT, "All Day Event", "@", row[4], file=report)
@@ -356,7 +365,7 @@ def chromeDateTimeConv(timestamp):
 def chromeQuery():
     '''Extract downloads, keyword search terms and url entries from chrome database'''
     db = ("evidence/Databases/chrome/History")
-    print(dt(),"Querying Google Chrome Databases")
+    print(dt(), "Querying Google Chrome Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                  Chrome Data\n", file=report)
@@ -399,7 +408,7 @@ def chromeQuery():
 def smsQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/sms/mmssms.db")
-    print(dt(),"Querying SMS Databases")
+    print(dt(), "Querying SMS Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  SMS Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -430,7 +439,7 @@ def smsQuery():
 
 def whatsAppQuery():
     '''Extract SMS messages from SMS Database'''
-    print(dt(),"Querying WhatsApp Databases")
+    print(dt(), "Querying WhatsApp Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  WhatsApp Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -473,7 +482,7 @@ def whatsAppQuery():
 
 def skypeQuery():
     '''Extract contacts and messages from skype Database'''
-    print(dt(),"Querying Skype Databases")
+    print(dt(), "Querying Skype Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  Skype Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -495,9 +504,9 @@ def skypeQuery():
                             print("\t\t", key, ":", value, file=report)
                         if key == "phones":
                             for item in value:
-                                for x,y in item.items():
+                                for x, y in item.items():
                                     if x == "number":
-                                        print("\t\t Number:",y, file=report)
+                                        print("\t\t Number:", y, file=report)
 
                     print("\n", file=report)
         else:
@@ -506,7 +515,7 @@ def skypeQuery():
 
 def skypeMessageQuery():
     '''Extract contacts and messages from skype Database'''
-    print(dt(),"Extracting Messages from Skype Database")
+    print(dt(), "Extracting Messages from Skype Database")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  Skype Message Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -532,17 +541,17 @@ def skypeMessageQuery():
                         if URL is not None:
                             print("\t\tContent:", URL.group(1), file=report)
                         else:
-                            print("\t\tContent:",msg["content"], file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
+                            print("\t\tContent:", msg["content"], file=report)
+                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=report)
 
                     elif msg["messagetype"] == "Event/Call":
                         print("\t\tCall Created between user and", msg["conversationId"], file=report)
-                        dur=re.compile('<duration>(.*?)</duration>').search(msg["content"])
+                        dur = re.compile('<duration>(.*?)</duration>').search(msg["content"])
                         if dur is not None:
                             print("\t\tCall Ended, Duration:", dur.group(1), file=report)
                         else:
                             print("\t\tCall Started", file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
+                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=report)
 
                     elif msg["messagetype"] == "RichText/UriObject":
                         if msg["conversationId"] == msg["creator"]:
@@ -550,18 +559,18 @@ def skypeMessageQuery():
                         else:
                             print("\t\tFile sent to", msg["conversationId"], file=report)
 
-                        fileName=re.compile('<OriginalName v=\"(.*?)\">').search(msg["content"])
+                        fileName = re.compile('<OriginalName v=\"(.*?)\">').search(msg["content"])
                         if fileName is not None:
-                            print("\t\tFilename:",fileName.group(1), file=report)
+                            print("\t\tFilename:", fileName.group(1), file=report)
                         else:
                             print("\t\tFile Not Found", file=report)
 
-                        fileType=re.compile('meta type=\"(.*?)\"').search(msg["content"])
+                        fileType = re.compile('meta type=\"(.*?)\"').search(msg["content"])
                         if fileType is not None:
-                            print("\t\tFiletype:",fileType.group(1), file=report)
+                            print("\t\tFiletype:", fileType.group(1), file=report)
                         else:
                             print("\t\tFiletype Not Found", file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
+                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=report)
         else:
             print(dt(), "[ERROR] Skype Database not found", file=report)
 

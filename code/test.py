@@ -25,69 +25,59 @@ def dt():
     return(dt)
 
 
-def skypeMessageQuery():
-    '''Extract contacts and messages from skype Database'''
-    print(dt(),"Extracting Messages from Skype Database")
-    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-    print("                  Skype Data\n", file=report)
-    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-    db = glob.glob("evidence/Databases/Skype/*live*.db")
-    for file in db:
-        if os.path.isfile(file):
-            connect = sqlite3.connect(file)
-            cur = connect.cursor()
-            cur.execute("SELECT nsp_data from messagesv12")
-            messages = cur.fetchall()
-            print(dt(), "The following messages have been found:", file=report)
-            for row in messages:
-                for line in row:
-                    msg = json.loads(line)
-                    time = datetime.datetime.strptime(msg["_serverMessages"][0]["originalarrivaltime"][:-8], "%Y-%m-%dT%H:%M")
-                    if msg["messagetype"] == "RichText":
-                        if msg["conversationId"] == msg["creator"]:
-                            print("\t\tMessage received from", msg["conversationId"], file=report)
-                        else:
-                            print("\t\tMessage sent to", msg["conversationId"], file=report)
+def calendarQuery():
+    '''Extract calendar entries from calendar database'''
+    db = ("evidence/Databases/Calendar/calendar.db")
+    print(dt(), "Querying Calendar Databases")
+    if os.path.isfile(db):
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        print("                  Calendar Data\n", file=report)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        connect = sqlite3.connect(db)
+        print(dt(), "Connection made to Calendar Database", file=report)
 
-                        URL = re.compile('<a href=\"(.*?)\">').search(msg["content"])
-                        if URL is not None:
-                            print("\t\tContent:", URL.group(1), file=report)
-                        else:
-                            print("\t\tContent:",msg["content"], file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
+        # Calendar Account Information
+        cur = connect.cursor()
+        cur.execute("SELECT account_name FROM Calendars;")
+        accounts = cur.fetchall()
 
-                    elif msg["messagetype"] == "Event/Call":
-                        print("\t\tCall Created between user and", msg["conversationId"], file=report)
-                        dur=re.compile('<duration>(.*?)</duration>').search(msg["content"])
-                        if dur is not None:
-                            print("\t\tCall Ended, Duration:", dur.group(1), file=report)
-                        else:
-                            print("\t\tCall Started", file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
+        print(dt(), "Calendar Contains the Following Accounts:", file=report)
+        for row in accounts:
+            print("\t\t", row[0], file=report)
 
-                    elif msg["messagetype"] == "RichText/UriObject":
-                        if msg["conversationId"] == msg["creator"]:
-                            print("\t\tFile received from", msg["conversationId"], file=report)
-                        else:
-                            print("\t\tFile sent to", msg["conversationId"], file=report)
+        # Event Information
+        cur.execute("SELECT title,allDay,EventsRawTimes.dtstart2445,EventsRawTimes.dtend2445,eventLocation FROM Events JOIN EventsRawTimes on Events._id == EventsRawTimes.event_id ORDER BY dtstart2445;")
+        events = cur.fetchall()
+        print("\n"+dt(), "Calendar Contains the Following Events:", file=report)
+        for row in events:
+            # Date / Time Decoding
+            # Works on P20
+            try:
+                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+                sDT = sDT.strftime("%d-%m-%Y %H:%M")
 
-                        fileName=re.compile('<OriginalName v=\"(.*?)\">').search(msg["content"])
-                        if fileName is not None:
-                            print("\t\tFilename:",fileName.group(1), file=report)
-                        else:
-                            print("\t\tFile Not Found", file=report)
+                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
+                eDT = eDT.strftime("%d-%m-%Y %H:%M")
 
-                        fileType=re.compile('meta type=\"(.*?)\"').search(msg["content"])
-                        if fileType is not None:
-                            print("\t\tFiletype:",fileType.group(1), file=report)
-                        else:
-                            print("\t\tFiletype Not Found", file=report)
-                        print("\t\tTime:", time.strftime("%d/%m/%Y %H:%M"),"\n", file=report)
-        else:
-            print(dt(), "[ERROR] Skype Database not found", file=report)
+            except:
+                # Except error, some phones format with Z on end
+                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%SZ")
+                sDT = sDT.strftime("%d-%m-%Y %H:%M")
+
+                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%SZ")
+                eDT = eDT.strftime("%d-%m-%Y %H:%M")
+
+
+            if (row[1] == 1):
+                print("\t\t", row[0], sDT, "All Day Event", "@", row[4], file=report)
+            else:
+                print("\t\t", row[0], sDT, "-", eDT, " @ ", row[4], file=report)
+
+    else:
+        print("[ERROR] Calendar Database not found")
 
 def main():
-    skypeMessageQuery()
+    calendarQuery()
 
 
 if __name__ == '__main__':
