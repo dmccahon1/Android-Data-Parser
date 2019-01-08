@@ -40,7 +40,7 @@ def dt():
     '''Generates date and time to be used in reports
     Saves having to repeatly write out datetime for each line.'''
     dt = datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")
-    dt = dt+":\t "
+    dt = dt+": "
     return(dt)
 
 
@@ -49,16 +49,17 @@ print(dt()+"Script Started", file=report)
 
 def clearFolders():
     '''Deletes androidbackup, rawdump and evidence folders'''
-    shutil.rmtree('android_backup', ignore_errors=True)
+    print(dt(), "Deleting folders")
     shutil.rmtree('rawdump', ignore_errors=True)
     shutil.rmtree('evidence', ignore_errors=True)
 
-    print(dt()+"Folders Successfully Cleared", file=report)
+    print(dt(),"Folders Successfully Cleared", file=report)
 
 
 def deviceInfo():
     '''Gets information about connected device
     Backup Size, Device Type, Android Version'''
+    print(dt(), "Gathering Device Information")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  Device Information\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -92,6 +93,7 @@ def adbExtract():
         if not os.path.isdir("rawdump/sdcard"):
             raise
     print(dt(), "Extracting Shared Storage", file=report)
+    print(dt(), "Extracting Shared Storage")
     subprocess.call([adb, "pull", "sdcard/", "rawdump/sdcard/", ])
     print(dt(), "Shared Storage Successfully Extracted", file=report)
     # subprocess.call([adb, "pull", "storage/", "rawdump/storage/", ])
@@ -102,13 +104,14 @@ def adbExtract():
 
     print(dt()+" {} Files Have Been Found\n".format(str(totalFiles)), file=report)
     print(dt()+" Shared Storage Acquisition Complete", file=report)
+    print(dt()+" Shared Storage Extracted Successfully", file=report)
 
 
 def fileSigAnalysis(folder):
     '''Searches for files within rawdump and matches to stored file filesignature '''
 
     # TODO: JPEG finds CNT files
-    print("FileSig Started")
+    print(dt(),"Analysing File Signatures")
     for root, directories, files in os.walk(folder):   # For folders/files in rawdump
         for file in files:
             for key, value in fileSig.items():   # Iterate over File types & Signatures
@@ -126,7 +129,7 @@ def fileSigAnalysis(folder):
 def evidenceGathering():
     '''Moves evidence to an evidence folder for each found filetype
     Renames duplicate files to avoid errors'''
-    print("Evidence Gathering Started")
+    print(dt(),"Gathering Evidence")
     for key, value in fileFound.items():
         for item in value:
             evidence = "evidence/"+key
@@ -147,7 +150,7 @@ def fileFoundGen():
     types found and duplicate file information - how many, file old + new name'''
 
     # TODO: Add list of applications installed on device?  Ugly output, extract required information?
-
+    print(dt(),"Generating Files Acquired Report Section",)
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  File Signature Searching\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -203,7 +206,7 @@ def databaseExtract():
     "Skype" : ["/data/data/com.skype.raider/databases/*live*.db"]}
 
     # TODO: Fix for Samsung Device
-
+    print(dt(),"Moving Databases to SDCARD")
     print(dt(), "Trying to copy databases to /sdcard/databases", file=report)
     for key, value in target.items():
         for path in value:
@@ -222,13 +225,13 @@ def databaseExtract():
 
     try:  # Create Directory for app dbs to go
         os.makedirs("evidence")
-        print(dt()+" Database Evidence Folder Successfully Created", file=report)
+        print(dt()+"Database Evidence Folder Successfully Created", file=report)
 
     except OSError:  # If directory already exists, ignore
         if not os.path.isdir("evidence"):
             raise
     print(dt(), "Pulling databases from /sdcard/databases/ to /evidence/databases", file=report)
-
+    print(dt(), "Extracting Databases From Device")
     subprocess.call([adb, "pull", "sdcard/Databases", "evidence", ])  # Pull database files from sdcard
 
     totalFiles = 0
@@ -242,7 +245,7 @@ def databaseExtract():
 def accountQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
-
+    print(dt(),"Querying Account Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                 Account Information\n", file=report)
@@ -263,7 +266,7 @@ def accountQuery():
 def contactQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
-
+    print(dt(),"Querying Contact Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                 Contact Information\n", file=report)
@@ -303,7 +306,7 @@ def contactQuery():
 def calendarQuery():
     '''Extract calendar entries from calendar database'''
     db = ("evidence/Databases/Calendar/calendar.db")
-
+    print(dt(),"Querying Calendar Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                  Calendar Data\n", file=report)
@@ -352,7 +355,7 @@ def chromeDateTimeConv(timestamp):
 def chromeQuery():
     '''Extract downloads, keyword search terms and url entries from chrome database'''
     db = ("evidence/Databases/chrome/History")
-
+    print(dt(),"Querying Google Chrome Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         print("                  Chrome Data\n", file=report)
@@ -395,6 +398,7 @@ def chromeQuery():
 def smsQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/sms/mmssms.db")
+    print(dt(),"Querying SMS Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  SMS Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -425,6 +429,7 @@ def smsQuery():
 
 def whatsAppQuery():
     '''Extract SMS messages from SMS Database'''
+    print(dt(),"Querying WhatsApp Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  WhatsApp Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
@@ -467,6 +472,7 @@ def whatsAppQuery():
 
 def skypeQuery():
     '''Extract contacts and messages from skype Database'''
+    print(dt(),"Querying Skype Databases")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("                  Skype Data\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
