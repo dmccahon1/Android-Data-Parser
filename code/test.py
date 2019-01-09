@@ -25,59 +25,50 @@ def dt():
     return(dt)
 
 
-def whatsAppQuery():
-    '''Extract SMS messages from SMS Database'''
-    print(dt(), "Querying WhatsApp Databases")
-    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-    print("                  WhatsApp Data\n", file=report)
-    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-    db = ("evidence/Databases/WhatsApp/msgstore.db")
+def chromeDateTimeConv(timestamp):
+    '''Convert chrome timestamp to DD/MM/YYYY, MM:HH:SS'''
+    epoch_start = datetime.datetime(1601, 1, 1)
+    delta = datetime.timedelta(microseconds=int(timestamp))
+    format = epoch_start + delta
+    return format.strftime("%d/%m/%y %H:%M:%S")
 
+
+
+def callQuery():
+    '''Extract calendar entries from calendar database'''
+    db = ("evidence/Databases/ContactCall/Contacts2.db")
+    calls = open("reports/call.txt", "w+", 1)
+    print(dt(), "Querying Calendar Databases")
     if os.path.isfile(db):
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+        print("                  Calendar Data\n", file=calls)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
         connect = sqlite3.connect(db)
-        print(dt(), "Connection made to WhatsApp Database", file=report)
+        print("\n"+dt(), "Connection made to Calendar Database", file=report)
+
+        # Calendar Account Information
         cur = connect.cursor()
-        cur.execute("SELECT key_remote_jid, key_from_me,data,timestamp  from messages where data IS NOT NULL")
-        messages = cur.fetchall()
-        print("The following messages have been sent/received via WhatsApp", file=report)
-        for row in messages:
-            if row[1] == 1:
-                sent = row[0]
-                num = sent[0:12]
-                print("\t\tMessage sent to", num, file=report)
-            else:
-                sent = row[0]
-                num = sent[0:12]
-                print("\t\tMessage received from", num, file=report)
-            print("\t\tMessage:", row[2], file=report)
-            print("\t\tDate/Time:", row[3], "\n", file=report)
+        cur.execute("SELECT number, date,duration,name  FROM calls;")
+        callLog = cur.fetchall()
+        print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
+        for row in callLog:
+            number = row[0]
+            date = row[1]
+            duration = row[2]
+            name = row[3]
 
-        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
-        media = cur.fetchall()
-        print(dt(), "The following media has been sent/received via WhatsApp:", file=report)
-        for row in media:
-            if row[1] == 1:
-                sent = row[0]
-                num = sent[0:12]
-                print("\t\tMedia sent to:" ,num, file=report)
-            else:
-                sent = row[0]
-                num = sent[0:12]
-                print("\t\tMedia received from", row[0], file=report)
-            print("\t\tMedia URL:", row[2], file=report)
-            date = str(row[3])
-            nDate = date[:-3]
-
-            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-            print("\t\tDate:", conv, file=report)
-            print("\t\tDate/Time:", nDate, "\n", file=report)
+            print("Caller Name:", name, file=calls)
+            print("Caller Number:", number, file=calls)
+            print("Call Duration", duration, file=calls)
+            print("Call Date:", date, "\n", file=calls)
 
     else:
-        print(dt(), "[ERROR] WhatsApp Database not found", file=report)
-
+        print("[ERROR] Call Log Database not found", file=report)
+        print("[ERROR] Call Log Database not found")
+    calls.close()
 
 def main():
-    whatsAppQuery()
+    callQuery()
 
 
 if __name__ == '__main__':
