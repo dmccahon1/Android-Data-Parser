@@ -25,59 +25,59 @@ def dt():
     return(dt)
 
 
-def calendarQuery():
-    '''Extract calendar entries from calendar database'''
-    db = ("evidence/Databases/Calendar/calendar.db")
-    print(dt(), "Querying Calendar Databases")
+def whatsAppQuery():
+    '''Extract SMS messages from SMS Database'''
+    print(dt(), "Querying WhatsApp Databases")
+    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    print("                  WhatsApp Data\n", file=report)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+    db = ("evidence/Databases/WhatsApp/msgstore.db")
+
     if os.path.isfile(db):
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-        print("                  Calendar Data\n", file=report)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
         connect = sqlite3.connect(db)
-        print(dt(), "Connection made to Calendar Database", file=report)
-
-        # Calendar Account Information
+        print(dt(), "Connection made to WhatsApp Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT account_name FROM Calendars;")
-        accounts = cur.fetchall()
-
-        print(dt(), "Calendar Contains the Following Accounts:", file=report)
-        for row in accounts:
-            print("\t\t", row[0], file=report)
-
-        # Event Information
-        cur.execute("SELECT title,allDay,EventsRawTimes.dtstart2445,EventsRawTimes.dtend2445,eventLocation FROM Events JOIN EventsRawTimes on Events._id == EventsRawTimes.event_id ORDER BY dtstart2445;")
-        events = cur.fetchall()
-        print("\n"+dt(), "Calendar Contains the Following Events:", file=report)
-        for row in events:
-            # Date / Time Decoding
-            # Works on P20
-            try:
-                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-                sDT = sDT.strftime("%d-%m-%Y %H:%M")
-
-                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
-                eDT = eDT.strftime("%d-%m-%Y %H:%M")
-
-            except:
-                # Except error, some phones format with Z on end
-                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%SZ")
-                sDT = sDT.strftime("%d-%m-%Y %H:%M")
-
-                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%SZ")
-                eDT = eDT.strftime("%d-%m-%Y %H:%M")
-
-
-            if (row[1] == 1):
-                print("\t\t", row[0], sDT, "All Day Event", "@", row[4], file=report)
+        cur.execute("SELECT key_remote_jid, key_from_me,data,timestamp  from messages where data IS NOT NULL")
+        messages = cur.fetchall()
+        print("The following messages have been sent/received via WhatsApp", file=report)
+        for row in messages:
+            if row[1] == 1:
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMessage sent to", num, file=report)
             else:
-                print("\t\t", row[0], sDT, "-", eDT, " @ ", row[4], file=report)
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMessage received from", num, file=report)
+            print("\t\tMessage:", row[2], file=report)
+            print("\t\tDate/Time:", row[3], "\n", file=report)
+
+        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
+        media = cur.fetchall()
+        print(dt(), "The following media has been sent/received via WhatsApp:", file=report)
+        for row in media:
+            if row[1] == 1:
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMedia sent to:" ,num, file=report)
+            else:
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMedia received from", row[0], file=report)
+            print("\t\tMedia URL:", row[2], file=report)
+            date = str(row[3])
+            nDate = date[:-3]
+
+            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+            print("\t\tDate:", conv, file=report)
+            print("\t\tDate/Time:", nDate, "\n", file=report)
 
     else:
-        print("[ERROR] Calendar Database not found")
+        print(dt(), "[ERROR] WhatsApp Database not found", file=report)
+
 
 def main():
-    calendarQuery()
+    whatsAppQuery()
 
 
 if __name__ == '__main__':

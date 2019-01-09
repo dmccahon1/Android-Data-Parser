@@ -454,9 +454,13 @@ def whatsAppQuery():
         print("The following messages have been sent/received via WhatsApp", file=report)
         for row in messages:
             if row[1] == 1:
-                print("\t\tMessage sent to", row[0], file=report)
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMessage sent to", num, file=report)
             else:
-                print("\t\tMessage received from", row[0], file=report)
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMessage received from", num, file=report)
             print("\t\tMessage:", row[2], file=report)
             print("\t\tDate/Time:", row[3], "\n", file=report)
 
@@ -465,8 +469,12 @@ def whatsAppQuery():
         print(dt(), "The following media has been sent/received via WhatsApp:", file=report)
         for row in media:
             if row[1] == 1:
-                print("\t\tMedia sent to", row[0], file=report)
+                sent = row[0]
+                num = sent[0:12]
+                print("\t\tMedia sent to:" ,num, file=report)
             else:
+                sent = row[0]
+                num = sent[0:12]
                 print("\t\tMedia received from", row[0], file=report)
             print("\t\tMedia URL:", row[2], file=report)
             date = str(row[3])
