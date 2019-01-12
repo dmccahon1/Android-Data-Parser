@@ -11,6 +11,7 @@ import glob
 import json
 import time
 import re
+import pprint
 
 report = open("report.txt", "w+", 1)
 
@@ -33,43 +34,46 @@ def chromeDateTimeConv(timestamp):
     return format.strftime("%d/%m/%y %H:%M:%S")
 
 
+def contactQuery():
+    '''Extract SMS messages from SMS Database'''
+    db = ("evidence/Databases/ContactCall/contacts2.db")
+    print(dt(), "Querying Contact Databases")
 
-def callQuery():
-    '''Extract calendar entries from calendar database'''
-    db = ("evidence/Databases/ContactCall/Contacts2.db")
-    calls = open("reports/call.txt", "w+", 1)
-    print(dt(), "Querying Calendar Databases")
+    con = open("reports/contacts.txt", "w+", 1)
+
     if os.path.isfile(db):
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        print("                  Calendar Data\n", file=calls)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
+        print("                 Contact Information\n", file=con)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
         connect = sqlite3.connect(db)
-        print("\n"+dt(), "Connection made to Calendar Database", file=report)
-
-        # Calendar Account Information
+        print("\n"+dt()+" Connection made to Contact Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT number, date,duration,name  FROM calls;")
-        callLog = cur.fetchall()
-        print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
-        for row in callLog:
-            number = row[0]
-            date = row[1]
-            duration = row[2]
-            name = row[3]
+        cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
+        contact = cur.fetchall()
+        print(dt()+" Extracting Contacts, See /reports/contacts.txt for detailed information:", file=report)
+        for row in contact:
+            data = {"Name": row[1],
+                    "Number:": row[2],
+                    "No. Times Contacts:": row[3],
+                    "Email:": row[4],
+                    "Address:": row[5],
+                    "Notes:": row[6]}
 
-            print("Caller Name:", name, file=calls)
-            print("Caller Number:", number, file=calls)
-            print("Call Duration", duration, file=calls)
-            print("Call Date:", date, "\n", file=calls)
+            for col,data in data.items():
+                if isinstance(data,str):
+                    print(col, data.replace("|",""), file=con)
+                else:
+                    print(col, "None", file=con)
+            print("\n", file=con)
+        con.close()
 
     else:
-        print("[ERROR] Call Log Database not found", file=report)
-        print("[ERROR] Call Log Database not found")
-    calls.close()
+        print("[ERROR] Contact Database Could Not Be Found", file=report)
+
+
 
 def main():
-    callQuery()
-
+    contactQuery()
 
 if __name__ == '__main__':
     main()

@@ -21,20 +21,7 @@ adb = homePath+'/adb'
 abe = homePath+'/abe.jar'
 unzip = homePath+'/7za.exe'
 
-# Dictionaries
 fileFound = {}
-filePath = {}
-dupFiles = {}
-fileSig = {"PNG": "89504E47",
-            "JPEG": "FFD8FFE0",
-            "JPG": "FFD8FFE1",
-            "DB": "53514C69746520666F726D6174203300",
-            "MP3": "494433",
-            "MP4": "0000001866747970",
-            "TIFF": "49492A",
-            "GIF": 	"47494638",
-            "Sound Recordings": "FFF94C80",
-            "PDF": "25504446"}
 
 
 def dt():
@@ -84,33 +71,34 @@ def adbExtract():
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     print("              Shared Storage Acquisition\n", file=report)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-    # TODO: Calculate time taken for each part in acquisition i.e 10mins to extract
 
-    try:  # Create Directory for ADB/TAR files to go
-        os.makedirs("rawdump/sdcard")
-        print(dt()+" Rawdump Folder Successfully Created", file=report)
-
-    except OSError:  # If directory already exists, ignore
-        if not os.path.isdir("rawdump/sdcard"):
-            raise
     print(dt(), "Pulling Shared Storage From Device", file=report)
-    print(dt(), "Extracting Shared Storage")
     quiet = open(os.devnull, "w")
-    subprocess.call([adb, "pull", "sdcard/", "rawdump/sdcard/"], stdout=quiet)
-    subprocess.call([adb, "pull", "storage/", "rawdump/storage"], stdout=quiet)
+    print(dt(), "Extracting Data From Shared Storage")
+    subprocess.call([adb, "pull", "sdcard/", "rawdump"], stdout=quiet)
     print(dt(), "Shared Storage Extraction Complete", file=report)
     totalFiles = 0
-    for root, directories, files in os.walk("rawdump/sdcard"):
+    for root, directories, files in os.walk("rawdump"):
         for file in files:
             totalFiles += 1
 
-    print(dt()+" {} Files Have Been Found\n".format(str(totalFiles)), file=report)
+    print(dt()+" %d Files Have Been Found\n" % (totalFiles), file=report)
 
 
 def fileSigAnalysis(folder):
     '''Searches for files within rawdump and matches to stored file filesignature '''
 
-    # TODO: JPEG finds CNT files
+    fileSig = {"PNG": "89504E47",
+                "JPEG": "FFD8FFE0",
+                "JPG": "FFD8FFE1",
+                "DB": "53514C69746520666F726D6174203300",
+                "MP3": "494433",
+                "MP4": "0000001866747970",
+                "TIFF": "49492A",
+                "GIF": 	"47494638",
+                "Sound Recordings": "FFF94C80",
+                "PDF": "25504446"}
+
     print(dt(), "Analysing File Signatures")
     for root, directories, files in os.walk(folder):   # For folders/files in rawdump
         for file in files:
@@ -127,8 +115,7 @@ def fileSigAnalysis(folder):
 
 
 def evidenceGathering():
-    '''Moves evidence to an evidence folder for each found filetype
-    Renames duplicate files to avoid errors'''
+    '''Moves evidence to an evidence folder for each found filetype'''
     print(dt(), "Gathering Evidence")
     for key, value in fileFound.items():
         for item in value:
@@ -139,15 +126,15 @@ def evidenceGathering():
                 except OSError:
                     if not os.path.isdir(evidence):
                         raise
-                try:  # Moves file to evidence folder
-                    shutil.move(path, evidence)
-                except shutil.Error as err:  # if duplicate name, file is renamed an then moved
+                try:  # Copy file to evidence folder
+                    shutil.copy(path, evidence)
+                except shutil.Error as err:
                     pass
 
 
 def fileFoundGen():
     '''Creates file signature section within report including file types searched, file
-    types found and duplicate file information - how many, file old + new name'''
+    types found'''
 
     # TODO: Add list of applications installed on device?  Ugly output, extract required information?
     print(dt(), "Generating Files Acquired Report Section",)
@@ -157,7 +144,7 @@ def fileFoundGen():
     except OSError:  # If directory already exists, ignore
         if not os.path.isdir("reports"):
             raise
-    files = open("reports/filesFound.txt","w+",1)
+    files = open("reports/filesFound.txt", "w+",1)
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
     print("                  File Signature Searching\n", file=files)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
@@ -167,13 +154,12 @@ def fileFoundGen():
         for found in value:
             totalFiles += 1
 
-    print("\n"+dt(),"{} Shared Storage Files have successfully been found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
-
+    print("\n"+dt(), "{} Shared Storage Files have successfully been found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
 
     for key, value in fileFound.items():
         print("{} ".format(len(value))+key+" files have been found", file=files)
         for file, path in value.items():
-            print("\t\t {} : {}".format(file, path), file=files)
+            print("\t\t %s : %s" % (file, path), file=files)
 
     files.close()
 
@@ -225,6 +211,7 @@ def databaseExtract():
     subprocess.call([adb, "pull", "sdcard/Databases", "evidence"], stdout=quiet)  # Pull database files from sdcard
 
     totalFiles = 0
+
     for root, directories, files in os.walk("evidence/databases/"):
         for file in files:
             totalFiles += 1
@@ -272,25 +259,18 @@ def contactQuery():
         contact = cur.fetchall()
         print(dt()+" Extracting Contacts, See /reports/contacts.txt for detailed information:", file=report)
         for row in contact:
-            print("Name:", row[1], file=con)
+            data = {"Name": row[1],
+                    "Number:": row[2],
+                    "No. Times Contacts:": row[3],
+                    "Email:": row[4],
+                    "Address:": row[5],
+                    "Notes:": row[6]}
 
-            if(type(row[2]) == str):
-                print("Number:", row[2].replace("|", ""), file=con)
-            else:
-                print("Number: None", file=con)
-
-            print("No. Times Contacted:", row[3], file=con)
-
-            if(type(row[4]) == str):
-                print("Email:", row[4].replace("|", ""), file=con)
-            else:
-                print("Email: None", file=con)
-
-            if(type(row[5]) == str):
-                print("Address:", row[5].replace("|", ""), file=con)
-            else:
-                print("Address: None", file=con)
-            print("Notes:", row[6], file=con)
+            for col,data in data.items():
+                if isinstance(data,str):
+                    print(col, data.replace("|",""), file=con)
+                else:
+                    print(col, "None", file=con)
             print("\n", file=con)
         con.close()
 
@@ -359,26 +339,30 @@ def callQuery():
     print(dt(), "Querying Calendar Databases")
     if os.path.isfile(db):
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        print("                  Calendar Data\n", file=calls)
+        print("                  Call Log Data\n", file=calls)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
         connect = sqlite3.connect(db)
-        print("\n"+dt(), "Connection made to Calendar Database", file=report)
+        print("\n"+dt(), "Connection made to Call Database", file=report)
 
         # Calendar Account Information
         cur = connect.cursor()
-        cur.execute("SELECT number, date,duration,name  FROM calls;")
-        callLog = cur.fetchall()
-        print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
-        for row in callLog:
-            number = row[0]
-            date = row[1]
-            duration = row[2]
-            name = row[3]
+        try:
+            cur.execute("SELECT number, date,duration,name  FROM calls;")
+            callLog = cur.fetchall()
+            print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
+            for row in callLog:
+                print("Caller Name:", row[3], file=calls)
+                print("Caller Number:", row[0], file=calls)
+                print("Call Duration", row[2], file=calls)
+                date = str(row[1])
+                nDate = date[:-3]
 
-            print("Caller Name:", name, file=calls)
-            print("Caller Number:", number, file=calls)
-            print("Call Duration", duration, file=calls)
-            print("Call Date:", date, "\n", file=calls)
+                conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+                print("Call Date:", row[1], "\n", file=calls)
+        except sqlite3.OperationalError as err:
+            print(dt()+" [ERROR] Call Data Could Not Be Found", file=calls)
+            print(dt()+" [ERROR] Call Data Could Not Be Found", file=report)
+            print(dt()+" [ERROR] Call Data Could Not Be Found")
 
     else:
         print("[ERROR] Call Log Database not found", file=report)
@@ -402,25 +386,17 @@ def emailQuery():
         sms = cur.fetchall()
         print(dt(), "Extracting Email Data, see /reports/emails.txt for detailed information", file=report)
         for row in sms:
-            displayName = row[0]
-            datetime = row[1]
-            subject = row[2]
-            fromList = row[3]
-            toList = row[4]
-            snippet = row[7]
-            account = row[8]
-
-            date = str(datetime)
+            date = str(row[1])
             nDate = date[:-3]
             conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
 
-            if account in toList:
-                print("Email received from", fromList, file=email)
+            if row[8] in row[4]:
+                print("Email received from", row[3], file=email)
             else:
-                print("Email sent to", toList, file=email)
+                print("Email sent to", row[4], file=email)
             print("Date:", conv, file=email)
-            print("Subject:", subject, file=email)
-            print("Snipper:", snippet, "\n", file=email)
+            print("Subject:", row[2], file=email)
+            print("Snipper:", row[7], "\n", file=email)
     else:
         print(dt(), "[ERROR] Email Database not found")
     email.close()
@@ -732,6 +708,8 @@ def main():
 
     else:
         print("[ERROR] No Device Connected")
+
+    print(fileFound)
 
 
 if __name__ == '__main__':
