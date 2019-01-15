@@ -12,7 +12,7 @@ import glob
 import json
 import time
 import re
-
+# Main Report / Summary Report
 report = open("report.txt", "w+", 1)
 
 # Platform Tools
@@ -20,7 +20,6 @@ homePath = os.path.abspath(os.path.join(__file__, "../../platform-tools"))
 adb = homePath+'/adb'
 abe = homePath+'/abe.jar'
 unzip = homePath+'/7za.exe'
-
 fileFound = {}
 
 
@@ -108,7 +107,7 @@ def fileSigAnalysis(folder):
                 read = open(path, "rb").read(sigLen)  # Read for length of signature
                 hexBytes = " ".join(['{:02X}'.format(byte) for byte in read])  # Convert binary to hex
                 stripBytes = hexBytes.replace(" ", "")  # Strip all spaces, required due to having to strip spaces in dict to calcuate bytes
-                if stripBytes.startswith(value):   # If file sig is found, append to fileFound dict
+                if stripBytes.startswith(value):   # If `````````file````````` sig is found, append to fileFound dict
                     if key not in fileFound:
                         fileFound[key] = {}
                     fileFound[key][file] = path
@@ -219,6 +218,15 @@ def databaseExtract():
     print(dt(), "%d Databases have been successfully extracted\n" % (totalFiles), file=report)
 
 
+def dateConversation(timestamp):
+    '''Convert chrome timestamp to DD/MM/YYYY, MM:HH:SS'''
+
+    date = str(timestamp)
+    nDate = date[:-3]
+    conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+
+    return(conv)
+
 def accountQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
@@ -261,7 +269,6 @@ def contactQuery():
         for row in contact:
             data = {"Name": row[1],
                     "Number:": row[2],
-                    "No. Times Contacts:": row[3],
                     "Email:": row[4],
                     "Address:": row[5],
                     "Notes:": row[6]}
@@ -271,6 +278,7 @@ def contactQuery():
                     print(col, data.replace("|",""), file=con)
                 else:
                     print(col, "None", file=con)
+            print("No.Times Contacted:", row[3],file=con)
             print("\n", file=con)
         con.close()
 
@@ -300,32 +308,23 @@ def calendarQuery():
             print("\t\t", row[0], file=calendar)
 
         # Event Information
-        cur.execute("SELECT title,allDay,EventsRawTimes.dtstart2445,EventsRawTimes.dtend2445,eventLocation FROM Events JOIN EventsRawTimes on Events._id == EventsRawTimes.event_id ORDER BY dtstart2445;")
+        cur.execute("SELECT title,allDay,dtstart,dtend,eventLocation FROM Events;")
         events = cur.fetchall()
         print("\n"+dt(), "Calendar Contains the Following Events:", file=calendar)
         for row in events:
-            # Date / Time Decoding
-            # Works on P20
-            try:
-                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-                sDT = sDT.strftime("%d-%m-%Y %H:%M")
+            startDateTime = str(row[2])
+            cutDate = startDateTime[:-3]
+            startDate = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(cutDate)))
 
-                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%S")
-                eDT = eDT.strftime("%d-%m-%Y %H:%M")
+            endDateTime = str(row[3])
+            cutSDate = endDateTime[:-3]
+            endDate = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(cutSDate)))
 
-            except:
-                # Except error, some phones format with Z on end
-                sDT = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%SZ")
-                sDT = sDT.strftime("%d-%m-%Y %H:%M")
-
-                eDT = datetime.datetime.strptime(row[3], "%Y%m%dT%H%M%SZ")
-                eDT = eDT.strftime("%d-%m-%Y %H:%M")
 
             if (row[1] == 1):
-                print("\t\t", row[0], sDT, "All Day Event", "@", row[4], file=calendar)
+                print("\t\t", row[0],"All Day Event", "@", row[4], file=calendar)
             else:
-                print("\t\t", row[0], sDT, "-", eDT, " @ ", row[4], file=calendar)
-
+                print("\t\t", row[0], startDate, "-", endDate, " @ ", row[4], file=calendar)
     else:
         print("[ERROR] Calendar Database not found", file=report)
         print("[ERROR] Calendar Database not found")
@@ -354,11 +353,7 @@ def callQuery():
                 print("Caller Name:", row[3], file=calls)
                 print("Caller Number:", row[0], file=calls)
                 print("Call Duration", row[2], file=calls)
-                date = str(row[1])
-                nDate = date[:-3]
-
-                conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-                print("Call Date:", row[1], "\n", file=calls)
+                print("Call Date:", dateConversation(row[1]), "\n", file=calls)
         except sqlite3.OperationalError as err:
             print(dt()+" [ERROR] Call Data Could Not Be Found", file=calls)
             print(dt()+" [ERROR] Call Data Could Not Be Found", file=report)
@@ -386,17 +381,13 @@ def emailQuery():
         sms = cur.fetchall()
         print(dt(), "Extracting Email Data, see /reports/emails.txt for detailed information", file=report)
         for row in sms:
-            date = str(row[1])
-            nDate = date[:-3]
-            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-
             if row[8] in row[4]:
                 print("Email received from", row[3], file=email)
             else:
                 print("Email sent to", row[4], file=email)
-            print("Date:", conv, file=email)
+            print("Date:", dateConversation(row[1]), file=email)
             print("Subject:", row[2], file=email)
-            print("Snipper:", row[7], "\n", file=email)
+            print("Snippet:", row[7], "\n", file=email)
     else:
         print(dt(), "[ERROR] Email Database not found")
     email.close()
@@ -484,7 +475,7 @@ def smsQuery():
         connect = sqlite3.connect(db)
         print("\n"+dt(), "Connection made to SMS Database", file=report)
         cur = connect.cursor()
-        cur.execute("select address, date, type, body from sms")
+        cur.execute("SELECT address, date, type, body FROM sms")
         sms = cur.fetchall()
         print(dt(), "Extracting SMS Messages, See /reports/SMS.txt for detailed information", file=report)
         for row in sms:
@@ -492,12 +483,7 @@ def smsQuery():
                 print("Message Received from:", row[0], file=SMS)
             else:
                 print("Message Sent to:", row[0], file=SMS)
-
-            date = str(row[1])
-            nDate = date[:-3]
-
-            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-            print("Date:", conv, file=SMS)
+            print("Date:", dateConversation(row[1]), file=SMS)
             print("Message:", row[3], "\n", file=SMS)
 
     else:
@@ -539,18 +525,14 @@ def whatsAppQuery():
                 num = sent[0:12]
                 print("Message received from", num, file=message)
             print("Message:", row[2], file=message)
-            date = str(row[3])
-            nDate = date[:-3]
-
-            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-            print("Date/Time:", conv, "\n", file=message)
+            print("Date/Time:", dateConversation(row[3]), "\n", file=message)
 
         message.close()
         files = open("reports/WhatsApp/WhatsAppdownloads.txt", "w+", 1)
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
         print("                  WhatsApp Media Transfer Data\n", file=files)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
-        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
+        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, media_mime_type  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
         media = cur.fetchall()
         print(dt(), "Extracting WhatsApp Media/File Transfer Data, see /report/WhatsApp/downloads.txt for detailed information:", file=report)
         for row in media:
@@ -563,15 +545,38 @@ def whatsAppQuery():
                 num = sent[0:12]
                 print("Media received from", row[0], file=files)
             print("Media URL:", row[2], file=files)
-            date = str(row[3])
-            nDate = date[:-3]
-
-            conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
-            print("Date:", conv, "\n", file=files)
+            print("Date:", dateConversation(row[3]), file=files)
+            print("File Type:", row[4], "\n", file=files)
         files.close()
+
+        calls = open("reports/WhatsApp/calls.txt", "w+", 1)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+        print("                  WhatsApp Call Logs\n", file=calls)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+
+        cur.execute("select key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration from messages JOIN call_logs ON message_row_id == messages._id")
+        callLogs = cur.fetchall()
+        print(dt(), "Extracting WhatsApp Call Logs, see /report/WhatsApp/callLogs.txt for detailed information:", file=report)
+        for row in callLogs:
+            contact = row[0]
+            if row[1] == 1:
+                print("User Called", contact[0:12], file=calls)
+            else:
+                print("Call Received From", contact[0:12], file=calls)
+            if row[3] == 1:
+                print("Video Call: Yes", file=calls)
+            else:
+                print("Video Call: No", file=calls)
+            print("Date:", dateConversation(row[2]), file=calls)
+            if row[4] != 0:
+                print("Duration:", row[4],"Seconds \n", file=calls)
+            else:
+                print("Call Missed\n", file=calls)
+        calls.close()
 
     else:
         print(dt(), "[ERROR] WhatsApp Database not found", file=report)
+
 
 
 def skypeQuery():
@@ -708,8 +713,6 @@ def main():
 
     else:
         print("[ERROR] No Device Connected")
-
-    print(fileFound)
 
 
 if __name__ == '__main__':
