@@ -89,11 +89,19 @@ def fileSigAnalysis(folder):
                 "JPG": "FFD8FFE1",
                 "DB": "53514C69746520666F726D6174203300",
                 "MP3": "494433",
-                "MP4": "0000001866747970",
-                "TIFF": "49492A",
+                "MP4": "0000001866747970",,
                 "GIF": 	"47494638",
-                "Sound Recordings": "FFF94C80",
-                "PDF": "25504446"}
+                "m4a": "FFF94C80",
+                "PDF": "25504446",
+                "3GP": "0000001466747970",
+                "BMP": "424D",
+                "MOV": "6D6F6F76",
+                "flv": "464C56",
+                "avi": "52494646",
+                "WMV": "3026B2758E66CF11",
+                "WAV": "52494646",
+                "AIFF": "464F524D00",
+                "FLAC": "664C614300000022"}
 
     print(dt(), "Analysing File Signatures")
     for root, directories, files in os.walk(folder):   # For folders/files in rawdump
@@ -171,7 +179,8 @@ def databaseExtract():
     # Errors found are thrown within shell and do not distrupt script execution
     target = {"SMS": ["/data/user_de/0/com.android.providers.telephony/databases/mmssms.db",
     "/data/data/com.android.providers.telephony/databases/mmssms.db"],
-    "ContactCall": ["/data/data/com.android.providers.contacts/databases/contacts2.db"],
+    "ContactCall": ["/data/data/com.android.providers.contacts/databases/contacts2.db",
+                    "/data/data/com.android.providers.contacts/databases/calls.db"],
     "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db"],
     "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db"],
     "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History"],
@@ -334,14 +343,20 @@ def callQuery():
     calls = open("reports/call.txt", "w+", 1)
 
     print(dt(), "Querying Call Databases")
-    if os.path.isfile(callDB):
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        print("                  Call Log Data\n", file=calls)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        connect = sqlite3.connect(callDB)
-        print("\n"+dt(), "Connection made to Call Database", file=report)
-
-        # Calendar Account Information
+    try:
+        if os.path.isfile(callDB):
+            print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+            print("                  Call Log Data\n", file=calls)
+            print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+            connect = sqlite3.connect(callDB)
+            print("\n"+dt(), "Connection made to Call Database", file=report)
+        else:
+            print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+            print("                  Call Log Data\n", file=calls)
+            print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+            connect = sqlite3.connect(contactDB)
+            print("\n"+dt(), "Connection made to Call Database", file=report)
+        # Call Log Information
         cur = connect.cursor()
         cur.execute("select number, date, name, duration  from calls")
         callLog = cur.fetchall()
@@ -351,27 +366,8 @@ def callQuery():
             print("Caller Number", row[0], file=calls)
             print("Call Duration:", row[3], "Seconds", file=calls)
             print("Call Date:", dateConversion(row[1]), "\n", file=calls)
-
-    elif os.path.isfile(contactDB):
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        print("                  Call Log Data\n", file=calls)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-        connect = sqlite3.connect(contactDB)
-        print("\n"+dt(), "Connection made to Call Database", file=report)
-
-        # Calendar Account Information
-        cur = connect.cursor()
-        cur.execute("SELECT number, date,duration,name  FROM calls;")
-        callLog = cur.fetchall()
-        print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
-        for row in callLog:
-            print("Caller Name:", row[3], file=calls)
-            print("Caller Number:", row[0], file=calls)
-            print("Call Duration", row[2], file=calls)
-            print("Call Date:", dateConversion(row[1]), "\n", file=calls)
-    else:
-        print("[ERROR] Call Log Database not found", file=report)
-        print("[ERROR] Call Log Database not found")
+    except:
+        print("[ERROR] Calls Database Not Found")
     calls.close()
 
 
@@ -597,7 +593,7 @@ def skypeQuery():
     except OSError:  # If directory already exists, ignore
         if not os.path.isdir("reports/Skype"):
             raise
-    contact = open("reports/contacts.txt", "w+", 1)
+    contact = open("reports/Skype/contacts.txt", "w+", 1)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=contact)
     print("                  Skype Contacts\n", file=contact)
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=contact)
@@ -631,7 +627,7 @@ def skypeQuery():
 
 def skypeMessageQuery():
     '''Extract contacts and messages from skype Database'''
-    mssg = open("reports/skypeMessages.txt", "w+", 1)
+    mssg = open("reports/Skype/skypeMessages.txt", "w+", 1)
 
     print(dt(), "Extracting Messages from Skype Database")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=mssg)
@@ -716,7 +712,6 @@ def main():
             skypeQuery()
             skypeMessageQuery()
             accountQuery()
-
     elif ("unauthorized" in connCheck):
         print("[ERROR] Device Unauthorized")
 
