@@ -12,6 +12,7 @@ import json
 import time
 import re
 import pprint
+import codecs
 
 report = open("report.txt", "w+", 1)
 
@@ -42,119 +43,108 @@ def chromeDateTimeConv(timestamp):
     return format.strftime("%d/%m/%y %H:%M:%S")
 
 
-def skypeQuery():
-    '''Extract contacts and messages from skype Database'''
-    print(dt(), "Querying Skype Databases")
+def whatsAppQuery():
+    '''Extract SMS messages from SMS Database'''
     try:  # Create Directory for ADB/TAR files to go
-        os.makedirs("reports/Skype")
+        os.makedirs("reports/WhatsApp")
 
     except OSError:  # If directory already exists, ignore
-        if not os.path.isdir("reports/Skype"):
+        if not os.path.isdir("reports/WhatsApp"):
             raise
-    contact = open("reports/Skype/contacts.txt", "w+", 1)
-    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=contact)
-    print("                  Skype Contacts\n", file=contact)
-    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=contact)
-    db = glob.glob("evidence/Databases/Skype/*live*.db")
-    for file in db:
-        if os.path.isfile(file):
-            connect = sqlite3.connect(file)
-            print("\n"+dt(), "Connection made to Skype Database", file=report)
-            cur = connect.cursor()
-            cur.execute("SELECT nsp_data from localaddressbookcontacts")
-            contacts = cur.fetchall()
-            conCount = 0
-            for row in contacts:
-                for line in row:
-                    data = json.loads(line)
-                    for key, value in data.items():
-                        target = ["firstName", "middleName", "lastName"]
-                        if key in target:
-                            print("", key, ":", value, file=contact)
-                        if key == "phones":
-                            for item in value:
-                                for x, y in item.items():
-                                    if x == "number":
-                                        print(" Number:", y, file=contact)
-                    conCount += 1
-                    print("\n", file=contact)
-            print(dt(), "%d Skype Contacts Found, see /reports/skype/contacts.txt for detailed information" % (conCount), file=report)
-            contact.close()
-        else:
-            print(dt(), "[ERROR] Skype Database not found", file=report)
+    print(dt(), "Querying WhatsApp Databases")
+    message = open("reports/WhatsApp/messages.txt", "w+", 1)
 
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=message)
+    print("                  WhatsApp Message Data\n", file=message)
+    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=message)
+    db = ("evidence/Databases/WhatsApp/msgstore.db")
 
-def skypeMessageQuery():
-    '''Extract contacts and messages from skype Database'''
-    mssg = open("reports/Skype/messages.txt", "w+", 1)
+    if os.path.isfile(db):
+        connect = sqlite3.connect(db)
+        print("\n"+dt(), "Connection made to WhatsApp Database", file=report)
+        cur = connect.cursor()
+        cur.execute("SELECT key_remote_jid, key_from_me,data,timestamp  from messages where data IS NOT NULL")
+        messages = cur.fetchall()
+        mssgCount = 0
+        for row in messages:
+            if row[1] == 1:
+                sent = row[0]
+                num = sent[0:12]
+                print("Message sent to", num, file=message)
+            else:
+                sent = row[0]
+                num = sent[0:12]
+                print("Message received from", num, file=message)
+            print("Message:", row[2], file=message)
+            print("Date/Time:", dateConversion(row[3]), "\n", file=message)
+            mssgCount += 1
+        print(dt(), "%d WhatsApp Messages Found, See /reports/WhatsApp/messages.txt for more info" % (mssgCount), file=report)
+        message.close()
 
-    print(dt(), "Extracting Messages from Skype Database")
-    print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=mssg)
-    print("                  Skype Message Data\n", file=mssg)
-    print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=mssg)
-    db = glob.glob("evidence/Databases/Skype/*live*.db")
-    for file in db:
-        if os.path.isfile(file):
-            connect = sqlite3.connect(file)
-            cur = connect.cursor()
-            cur.execute("SELECT nsp_data from messagesv12")
-            messages = cur.fetchall()
-            mssgCount = 0
-            for row in messages:
-                for line in row:
-                    msg = json.loads(line)
-                    time = datetime.datetime.strptime(msg["_serverMessages"][0]["originalarrivaltime"][:-8], "%Y-%m-%dT%H:%M")
-                    if msg["messagetype"] == "RichText":
-                        if msg["conversationId"] == msg["creator"]:
-                            print("Message received from", msg["conversationId"], file=mssg)
-                        else:
-                            print("Message sent to", msg["conversationId"], file=mssg)
+        files = open("reports/WhatsApp/WhatsAppdownloads.txt", "w+", 1)
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
+        print("                  WhatsApp Media Transfer Data\n", file=files)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
+        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, hex(thumb_image)  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
+        media = cur.fetchall()
+        mediaCount = 0
+        for row in media:
+            if row[1] == 1:
+                sent = row[0]
+                num = sent[0:12]
+                print("Media sent to:", num, file=files)
+            else:
+                sent = row[0]
+                num = sent[0:12]
+                print("Media received from", row[0], file=files)
+            print("Media URL:", row[2], file=files)
+            print("Date:", dateConversion(row[3]), file=files)
+            decode_hex = codecs.getdecoder("hex_codec")
+            asciiBlob = decode_hex(row[4])[0]
+            URL = re.compile(b'Media/WhatsApp Images(.*).jpg').search(asciiBlob)
+            if URL is not None:
+                path = URL.group(0)
+                print("Download Path:", path.decode(),"\n", file=files)
+            else:
+                print("No File Path Found", file=files)
 
-                        URL = re.compile('<a href=\"(.*?)\">').search(msg["content"])
-                        if URL is not None:
-                            print("Content:", URL.group(1), file=mssg)
-                        else:
-                            print("Content:", msg["content"], file=mssg)
-                        print("Time:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=mssg)
+        print(dt(), "%d Media/File Transfer Data Found, see /report/WhatsApp/downloads.txt for detailed information:" % (mediaCount), file=report)
 
-                    elif msg["messagetype"] == "Event/Call":
-                        print("Call between user and", msg["conversationId"], file=mssg)
-                        dur = re.compile('<duration>(.*?)</duration>').search(msg["content"])
-                        if dur is not None:
-                            print("Call Ended", file=mssg)
-                            print("Duration:", dur.group(1), file=mssg)
-                        else:
-                            print("Call Started", file=mssg)
-                        print("Time:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=mssg)
+        files.close()
 
-                    elif msg["messagetype"] == "RichText/UriObject":
-                        if msg["conversationId"] == msg["creator"]:
-                            print("File received from", msg["conversationId"], file=mssg)
-                        else:
-                            print("File sent to", msg["conversationId"], file=mssg)
+        calls = open("reports/WhatsApp/calls.txt", "w+", 1)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
+        print("                  WhatsApp Call Logs\n", file=calls)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
 
-                        fileName = re.compile('<OriginalName v=\"(.*?)\">').search(msg["content"])
-                        if fileName is not None:
-                            print("Filename:", fileName.group(1), file=mssg)
-                        else:
-                            print("File Not Found", file=mssg)
+        cur.execute("SELECT key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration FROM messages JOIN call_logs ON message_row_id == messages._id")
+        callLogs = cur.fetchall()
+        for row in callLogs:
+            contact = row[0]
+            calCount = 0
+            if row[1] == 1:
+                print("User Called", contact[0:12], file=calls)
+            else:
+                print("Call Received From", contact[0:12], file=calls)
+            if row[3] == 1:
+                print("Video Call: Yes", file=calls)
+            else:
+                print("Video Call: No", file=calls)
+            print("Date:", dateConversion(row[2]), file=calls)
+            if row[4] != 0:
+                print("Duration:", row[4],"Seconds \n", file=calls)
+            else:
+                print("Call Missed\n", file=calls)
+            calCount += 1
+        print(dt(), "%d WhatsApp Call Logs Found, see /report/WhatsApp/callLogs.txt for detailed information:" % (calCount), file=report)
+        calls.close()
 
-                        fileType = re.compile('meta type=\"(.*?)\"').search(msg["content"])
-                        if fileType is not None:
-                            print("Filetype:", fileType.group(1), file=mssg)
-                        else:
-                            print("Filetype Not Found", file=report)
-                        print("Time:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=mssg)
-                    mssgCount += 1
-            print(dt(), "%d Skype Messages Found, see /reports/skype/messages.txt for detailed information" % (mssgCount), file=report)
-            mssg.close()
-        else:
-            print(dt(), "[ERROR] Skype Database not found", file=mssg)
+    else:
+        print(dt(), "[ERROR] WhatsApp Database not found", file=report)
 
 
 def main():
-    skypeQuery()
-    skypeMessageQuery()
+    whatsAppQuery()
 
 if __name__ == '__main__':
     main()

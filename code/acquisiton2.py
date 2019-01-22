@@ -22,7 +22,6 @@ abe = homePath+'/abe.jar'
 unzip = homePath+'/7za.exe'
 fileFound = {}
 
-
 def dt():
     '''Generates date and time to be used in reports
     Saves having to repeatly write out datetime for each line.'''
@@ -78,7 +77,7 @@ def adbExtract():
         for file in files:
             totalFiles += 1
 
-    print(dt()+" %d Files Have Been Found\n" % (totalFiles), file=report)
+    print(dt()+" %d Files Have Been Found" % (totalFiles), file=report)
 
 
 def fileSigAnalysis(folder):
@@ -160,7 +159,7 @@ def fileFoundGen():
         for found in value:
             totalFiles += 1
 
-    print("\n"+dt(), "{} Shared Storage Files found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
+    print("\n"+dt(), "{} Matched File Types have been found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
 
     for key, value in fileFound.items():
         print("{} ".format(len(value))+key+" files have been found", file=files)
@@ -189,22 +188,19 @@ def databaseExtract():
     "Skype": ["/data/data/com.skype.raider/databases/*live*.db"],
     "Email": ["/data/data/com.android.email/databases/EmailProvider.db"]}
 
-    # TODO: Fix for Samsung Device
     print(dt(), "Moving Databases to SDCARD")
-    print(dt(), "Copying Target Databases to SDCARD", file=report)
+    print(dt(), "Copying The Following Target Databases to SDCARD:", file=report)
     for key, value in target.items():
         for path in value:
-            bPath = path.encode()  # Convert path to Bytes
-            bType = key.encode()  # Convert type to Bytes
+            print("\t\t", key, ":", path, file=report)
             procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
-            procId.communicate(b'su\nmkdir -p /sdcard/Databases/%s\ncp %s /sdcard/Databases/%s/ >> /dev/null \nexit\nexit' % (bType, bPath, bType))  # Make Directories, Copy file to temporary directory
+            procId.communicate(b'su\nmkdir -p /sdcard/Databases/%s\ncp %s /sdcard/Databases/%s/ >> /dev/null \nexit\nexit' % (key.encode(), path.encode(), key.encode()))  # Make Directories, Copy file to temporary directory
     # rename skype databases to remove special character
     print("\n"+dt(), "Databases have been copied to sdcard/databases", file=report)
     print(dt(), "Removing Special Characters from Skype Database Name", file=report)
 
     procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
     procId.communicate(b'su\ncd sdcard/databases/Skype/\nfor file in *; do mv "$file" `echo $file | tr \':\' \'-\'` ; done\nexit\nexit')  # Remove : from filename
-    # FIXME: FIJAOIJHAOHOAP
     try:  # Create Directory for app dbs to go
         os.makedirs("evidence")
         print(dt()+"Database Evidence Folder Created", file=report)
@@ -223,6 +219,10 @@ def databaseExtract():
             totalFiles += 1
 
     print(dt(), "%d Databases have been extracted\n" % (totalFiles), file=report)
+    procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
+    procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
+    print(dt(), "Removed changes made to device", file=report)
+
 
 
 def dateConversion(timestamp):
@@ -238,21 +238,25 @@ def dateConversion(timestamp):
 def accountQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
+    con = open("reports/accounts.txt", "w+", 1)
     print(dt(), "Querying Account Databases")
     if os.path.isfile(db):
 
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-        print("                 Account Information\n", file=report)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
+        print("                 Account Information\n", file=con)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
         connect = sqlite3.connect(db)
         print(dt(), "Connection made to Account Database", file=report)
         cur = connect.cursor()
         cur.execute("SELECT account_name FROM Accounts")
         contact = cur.fetchall()
-        print(dt()+"The following accounts have been found:", file=report)
+        acCount = 0
         for row in contact:
             account = row[0]
-            print("\t\t"+account, file=report)
+            print("\t\t"+account, file=con)
+            acCount += 1
+        print(dt()+" %d Accounts have been found, see /reports/accounts.txt for detailed information:" % (acCount), file=report)
+
     else:
         print("[ERROR] Contact Database Could Not Be Found", file=report)
 
@@ -560,7 +564,7 @@ def whatsAppQuery():
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
         print("                  WhatsApp Media Transfer Data\n", file=files)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
-        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, media_mime_type  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
+        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, hex(thumb_image)  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
         media = cur.fetchall()
         mediaCount = 0
         for row in media:
@@ -574,8 +578,15 @@ def whatsAppQuery():
                 print("Media received from", row[0], file=files)
             print("Media URL:", row[2], file=files)
             print("Date:", dateConversion(row[3]), file=files)
-            print("File Type:", row[4], "\n", file=files)
-            mediaCount += 1
+            decode_hex = codecs.getdecoder("hex_codec")
+            asciiBlob = decode_hex(row[4])[0]
+            URL = re.compile(b'Media/WhatsApp Images(.*).jpg').search(asciiBlob)
+            if URL is not None:
+                path = URL.group(0)
+                print("Download Path:", path.decode(),"\n", file=files)
+            else:
+                print("No File Path Found", file=files)
+
         print(dt(), "%d Media/File Transfer Data Found, see /report/WhatsApp/downloads.txt for detailed information:" % (mediaCount), file=report)
 
         files.close()
@@ -732,6 +743,7 @@ def main():
             evidenceGathering()
             fileFoundGen()
             databaseExtract()
+            accountQuery()
             contactQuery()
             smsQuery()
             calendarQuery()
@@ -741,7 +753,6 @@ def main():
             whatsAppQuery()
             skypeQuery()
             skypeMessageQuery()
-            accountQuery()
     elif ("unauthorized" in connCheck):
         print("[ERROR] Device Unauthorized")
 
