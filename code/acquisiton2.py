@@ -12,6 +12,7 @@ import glob
 import json
 import time
 import re
+import codecs
 # Main Report / Summary Report
 report = open("report.txt", "w+", 1)
 
@@ -21,6 +22,7 @@ adb = homePath+'/adb'
 abe = homePath+'/abe.jar'
 unzip = homePath+'/7za.exe'
 fileFound = {}
+
 
 def dt():
     '''Generates date and time to be used in reports
@@ -178,15 +180,15 @@ def databaseExtract():
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     # Dictionary with path to databases, multiple entries added for support of multiple locations
     # Errors found are thrown within shell and do not distrupt script execution
-    target = {"SMS": ["/data/user_de/0/com.android.providers.telephony/databases/mmssms.db",
-    "/data/data/com.android.providers.telephony/databases/mmssms.db"],
-    "ContactCall": ["/data/data/com.android.providers.contacts/databases/contacts2.db",
-                    "/data/data/com.android.providers.contacts/databases/calls.db"],
-    "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db"],
-    "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db"],
-    "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History"],
-    "Skype": ["/data/data/com.skype.raider/databases/*live*.db"],
-    "Email": ["/data/data/com.android.email/databases/EmailProvider.db"]}
+    target = {"SMS": ["/data/user_de/0/com.android.providers.telephony/databases/mmssms.db*",
+    "/data/data/com.android.providers.telephony/databases/mmssms.db*"],
+    "ContactCall": ["/data/data/com.android.providers.contacts/databases/calls.db*",
+                    "/data/data/com.android.providers.contacts/databases/contacts2.db*"],
+    "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db*"],
+    "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db*"],
+    "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History*"],
+    "Skype": ["/data/data/com.skype.raider/databases/*live*.db*"],
+    "Email": ["/data/data/com.android.email/databases/EmailProvider.db*"]}
 
     print(dt(), "Moving Databases to SDCARD")
     print(dt(), "Copying The Following Target Databases to SDCARD:", file=report)
@@ -220,17 +222,15 @@ def databaseExtract():
 
     print(dt(), "%d Databases have been extracted\n" % (totalFiles), file=report)
     procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
-    procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
+    # procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
     print(dt(), "Removed changes made to device", file=report)
-
 
 
 def dateConversion(timestamp):
     '''Convert chrome timestamp to DD/MM/YYYY, MM:HH:SS'''
-
     date = str(timestamp)
     nDate = date[:-3]
-    conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+    conv = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(int(nDate)))
 
     return(conv)
 
@@ -275,26 +275,27 @@ def contactQuery():
         connect = sqlite3.connect(db)
         print("\n"+dt()+" Connection made to Contact Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
-        contact = cur.fetchall()
-        conCount = 0
-        for row in contact:
-            data = {"Name": row[1],
-                    "Number:": row[2],
-                    "Email:": row[4],
-                    "Address:": row[5],
-                    "Notes:": row[6]}
-
-            for col,data in data.items():
-                if isinstance(data,str):
-                    print(col, data.replace("|",""), file=con)
-                else:
-                    print(col, "None", file=con)
-            print("No.Times Contacted:", row[3],file=con)
-            print("\n", file=con)
-            conCount += 1
-        print(dt()+" %d Contacts Found, See /reports/contacts.txt for detailed information:" % (conCount), file=report)
-
+        try:
+            cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
+            contact = cur.fetchall()
+            conCount = 0
+            for row in contact:
+                data = {"Name": row[1],
+                        "Number:": row[2],
+                        "Email:": row[4],
+                        "Address:": row[5],
+                        "Notes:": row[6]}
+                for col, abedata in data.items():
+                    if isinstance(data, str):
+                        print(col, data.replace("|", ""), file=con)
+                    else:
+                        print(col, "None", file=con)
+                print("No.Times Contacted:", row[3], file=con)
+                print("\n", file=con)
+                conCount += 1
+            print(dt()+" %d Contacts Found, See /reports/contacts.txt for detailed information:" % (conCount), file=report)
+        except sqlite3.OperationalError as NotFound:
+            print("[ERROR] No Contacts Found")
         con.close()
 
     else:
@@ -336,7 +337,7 @@ def calendarQuery():
             endDate = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(cutSDate)))
 
             if (row[1] == 1):
-                print("\t\t", row[0],"All Day Event", "@", row[4], file=calendar)
+                print("\t\t", row[0], "All Day Event", "@", row[4], file=calendar)
             else:
                 print("\t\t", row[0], startDate, "-", endDate, " @ ", row[4], file=calendar)
             calCount += 1
@@ -379,7 +380,6 @@ def callQuery():
             print("Call Date:", dateConversion(row[1]), "\n", file=calls)
             callsCount += 1
         print(dt(), "%d Call Logs Extracted, see /report/calls.txt for detailed information" % (callsCount), file=report)
-
     except:
         print("[ERROR] Calls Database Not Found")
     calls.close()
@@ -407,7 +407,7 @@ def emailQuery():
                 print("Email sent to", row[4], file=email)
             print("Date:", dateConversion(row[1]), file=email)
             print("Subject:", row[2], file=email)
-            print("Snippet:", row[7], "\n", file=email)
+            print("Snippet:", row[7].encode('utf-8', 'ignore'), "\n", file=email)
             emailCount += 1
         print(dt(), "%d Emails Found, see /reports/emails.txt for detailed information" % (emailCount), file=report)
     else:
@@ -451,7 +451,7 @@ def chromeQuery():
             print("Time:", chromeDateTimeConv(row[1]), file=downloads)
             print("Total Bytes:", row[4], "\n", file=downloads)
             downCount += 1
-        print(dt(), "%d Google Chrome Downloads Found, see /reports/chrome/downloads.txt for detailed information" % (downCount), file=report)
+        # print(dt(), "%d Google Chrome Downloads Found, see /reports/chrome/downloads.txt for detailed information" % (downCount), file=report)
 
         downloads.close()
         searchterms = open("reports/chrome/searchterms.txt", "w+", 1)
@@ -502,20 +502,21 @@ def smsQuery():
         connect = sqlite3.connect(db)
         print("\n"+dt(), "Connection made to SMS Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT address, date, type, body FROM sms")
-        sms = cur.fetchall()
-        smsCount = 0
-        for row in sms:
-            if row[2] == 1:
-                print("Message Received from:", row[0], file=SMS)
-            else:
-                print("Message Sent to:", row[0], file=SMS)
-            print("Date:", dateConversion(row[1]), file=SMS)
-            print("Message:", row[3], "\n", file=SMS)
-            smsCount += 1
-        print(dt(), "%d SMS Messages Found, See /reports/SMS.txt for detailed information" % (smsCount), file=report)
-
-
+        try:
+            cur.execute("SELECT address, date, type, body FROM sms")
+            sms = cur.fetchall()
+            smsCount = 0
+            for row in sms:
+                if row[2] == 1:
+                    print("Message Received from:", row[0], file=SMS)
+                else:
+                    print("Message Sent to:", row[0], file=SMS)
+                print("Date:", dateConversion(row[1]), file=SMS)
+                print("Message:", row[3], "\n", file=SMS)
+                smsCount += 1
+            print(dt(), "%d SMS Messages Found, See /reports/SMS.txt for detailed information" % (smsCount), file=report)
+        except sqlite3.OperationalError as NotFound:
+            print("[ERROR] SMS Data Not Found")
     else:
         print(dt(), "[ERROR] SMS Database not found", file=report)
         print(dt(), "[ERROR] SMS Database not found")
@@ -583,9 +584,10 @@ def whatsAppQuery():
             URL = re.compile(b'Media/WhatsApp Images(.*).jpg').search(asciiBlob)
             if URL is not None:
                 path = URL.group(0)
-                print("Download Path:", path.decode(),"\n", file=files)
+                print("Download Path:", path.decode(), "\n", file=files)
             else:
                 print("No File Path Found", file=files)
+            mediaCount += 1
 
         print(dt(), "%d Media/File Transfer Data Found, see /report/WhatsApp/downloads.txt for detailed information:" % (mediaCount), file=report)
 
@@ -595,9 +597,10 @@ def whatsAppQuery():
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
         print("                  WhatsApp Call Logs\n", file=calls)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-
-        cur.execute("SELECT key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration FROM messages JOIN call_logs ON message_row_id == messages._id")
+        cur.execute("SELECT jid.user,from_me,timestamp,video_call,duration  from call_log JOIN jid on jid_row_id == jid._id")
+        # cur.execute("SELECT key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration FROM messages JOIN call_logs ON message_row_id == messages._id")
         callLogs = cur.fetchall()
+        calCount = 0
         for row in callLogs:
             contact = row[0]
             calCount = 0
@@ -611,7 +614,7 @@ def whatsAppQuery():
                 print("Video Call: No", file=calls)
             print("Date:", dateConversion(row[2]), file=calls)
             if row[4] != 0:
-                print("Duration:", row[4],"Seconds \n", file=calls)
+                print("Duration:", row[4], "Seconds \n", file=calls)
             else:
                 print("Call Missed\n", file=calls)
             calCount += 1
