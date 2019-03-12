@@ -12,6 +12,7 @@ import glob
 import json
 import time
 import re
+import codecs
 # Main Report / Summary Report
 report = open("report.txt", "w+", 1)
 
@@ -31,7 +32,7 @@ def dt():
     return(dt)
 
 
-print(dt()+"Script Started", file=report)
+print(dt()+" Script Started", file=report)
 
 
 def clearFolders():
@@ -41,7 +42,7 @@ def clearFolders():
     shutil.rmtree('evidence', ignore_errors=True)
     shutil.rmtree('reports', ignore_errors=True)
 
-    print(dt(), "Folders Successfully Cleared", file=report)
+    print(dt(), "Folders Cleared", file=report)
 
 
 def deviceInfo():
@@ -78,7 +79,7 @@ def adbExtract():
         for file in files:
             totalFiles += 1
 
-    print(dt()+" %d Files Have Been Found\n" % (totalFiles), file=report)
+    print(dt()+" %d Files Have Been Found" % (totalFiles), file=report)
 
 
 def fileSigAnalysis(folder):
@@ -89,7 +90,7 @@ def fileSigAnalysis(folder):
                 "JPG": "FFD8FFE1",
                 "DB": "53514C69746520666F726D6174203300",
                 "MP3": "494433",
-                "MP4": "0000001866747970",,
+                "MP4": "0000001866747970",
                 "GIF": 	"47494638",
                 "m4a": "FFF94C80",
                 "PDF": "25504446",
@@ -133,6 +134,8 @@ def evidenceGathering():
                 try:  # Copy file to evidence folder
                     shutil.move(path, evidence)
                 except shutil.Error as err:
+                    pass  # Duplicate file found, ignore
+                except FileNotFoundError as fileNotFound:
                     pass
 
 
@@ -158,7 +161,7 @@ def fileFoundGen():
         for found in value:
             totalFiles += 1
 
-    print("\n"+dt(), "{} Shared Storage Files have successfully been found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
+    print("\n"+dt(), "{} Matched File Types have been found, see /reports/filesFound.txt for details".format(totalFiles), file=report)
 
     for key, value in fileFound.items():
         print("{} ".format(len(value))+key+" files have been found", file=files)
@@ -177,35 +180,32 @@ def databaseExtract():
     print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
     # Dictionary with path to databases, multiple entries added for support of multiple locations
     # Errors found are thrown within shell and do not distrupt script execution
-    target = {"SMS": ["/data/user_de/0/com.android.providers.telephony/databases/mmssms.db",
-    "/data/data/com.android.providers.telephony/databases/mmssms.db"],
-    "ContactCall": ["/data/data/com.android.providers.contacts/databases/contacts2.db",
-                    "/data/data/com.android.providers.contacts/databases/calls.db"],
-    "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db"],
-    "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db"],
-    "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History"],
-    "Skype": ["/data/data/com.skype.raider/databases/*live*.db"],
-    "Email": ["/data/data/com.android.email/databases/EmailProvider.db"]}
+    target = {"SMS": ["/data/user_de/0/com.android.providers.telephony/databases/mmssms.db*",
+    "/data/data/com.android.providers.telephony/databases/mmssms.db*"],
+    "ContactCall": ["/data/data/com.android.providers.contacts/databases/calls.db*",
+                    "/data/data/com.android.providers.contacts/databases/contacts2.db*"],
+    "Calendar": ["/data/data/com.android.providers.calendar/databases/calendar.db*"],
+    "WhatsApp": ["data/data/com.whatsapp/databases/msgstore.db*"],
+    "Chrome": ["/data/data/com.android.chrome/app_chrome/Default/History*"],
+    "Skype": ["/data/data/com.skype.raider/databases/*live*.db*"],
+    "Email": ["/data/data/com.android.email/databases/EmailProvider.db*"]}
 
-    # TODO: Fix for Samsung Device
     print(dt(), "Moving Databases to SDCARD")
-    print(dt(), "Copying Target Databases to SDCARD", file=report)
+    print(dt(), "Copying The Following Target Databases to SDCARD:", file=report)
     for key, value in target.items():
         for path in value:
-            bPath = path.encode()  # Convert path to Bytes
-            bType = key.encode()  # Convert type to Bytes
+            print("\t\t", key, ":", path, file=report)
             procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
-            procId.communicate(b'su\nmkdir -p /sdcard/Databases/%s\ncp %s /sdcard/Databases/%s/ >> /dev/null \nexit\nexit' % (bType, bPath, bType))  # Make Directories, Copy file to temporary directory
+            procId.communicate(b'su\nmkdir -p /sdcard/Databases/%s\ncp %s /sdcard/Databases/%s/ >> /dev/null \nexit\nexit' % (key.encode(), path.encode(), key.encode()))  # Make Directories, Copy file to temporary directory
     # rename skype databases to remove special character
     print("\n"+dt(), "Databases have been copied to sdcard/databases", file=report)
     print(dt(), "Removing Special Characters from Skype Database Name", file=report)
 
     procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
     procId.communicate(b'su\ncd sdcard/databases/Skype/\nfor file in *; do mv "$file" `echo $file | tr \':\' \'-\'` ; done\nexit\nexit')  # Remove : from filename
-    # FIXME: FIJAOIJHAOHOAP
     try:  # Create Directory for app dbs to go
         os.makedirs("evidence")
-        print(dt()+"Database Evidence Folder Successfully Created", file=report)
+        print(dt()+"Database Evidence Folder Created", file=report)
     except OSError:  # If directory already exists, ignore
         if not os.path.isdir("evidence"):
             raise
@@ -220,15 +220,17 @@ def databaseExtract():
         for file in files:
             totalFiles += 1
 
-    print(dt(), "%d Databases have been successfully extracted\n" % (totalFiles), file=report)
+    print(dt(), "%d Databases have been extracted\n" % (totalFiles), file=report)
+    procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
+    # procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
+    print(dt(), "Removed changes made to device", file=report)
 
 
 def dateConversion(timestamp):
     '''Convert chrome timestamp to DD/MM/YYYY, MM:HH:SS'''
-
     date = str(timestamp)
     nDate = date[:-3]
-    conv = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(nDate)))
+    conv = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(int(nDate)))
 
     return(conv)
 
@@ -236,21 +238,25 @@ def dateConversion(timestamp):
 def accountQuery():
     '''Extract SMS messages from SMS Database'''
     db = ("evidence/Databases/ContactCall/contacts2.db")
+    con = open("reports/accounts.txt", "w+", 1)
     print(dt(), "Querying Account Databases")
     if os.path.isfile(db):
 
-        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
-        print("                 Account Information\n", file=report)
-        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=report)
+        print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
+        print("                 Account Information\n", file=con)
+        print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=con)
         connect = sqlite3.connect(db)
         print(dt(), "Connection made to Account Database", file=report)
         cur = connect.cursor()
         cur.execute("SELECT account_name FROM Accounts")
         contact = cur.fetchall()
-        print(dt()+"The following accounts have been found:", file=report)
+        acCount = 0
         for row in contact:
             account = row[0]
-            print("\t\t"+account, file=report)
+            print("\t\t"+account, file=con)
+            acCount += 1
+        print(dt()+" %d Accounts have been found, see /reports/accounts.txt for detailed information:" % (acCount), file=report)
+
     else:
         print("[ERROR] Contact Database Could Not Be Found", file=report)
 
@@ -269,23 +275,27 @@ def contactQuery():
         connect = sqlite3.connect(db)
         print("\n"+dt()+" Connection made to Contact Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
-        contact = cur.fetchall()
-        print(dt()+" Extracting Contacts, See /reports/contacts.txt for detailed information:", file=report)
-        for row in contact:
-            data = {"Name": row[1],
-                    "Number:": row[2],
-                    "Email:": row[4],
-                    "Address:": row[5],
-                    "Notes:": row[6]}
-
-            for col,data in data.items():
-                if isinstance(data,str):
-                    print(col, data.replace("|",""), file=con)
-                else:
-                    print(col, "None", file=con)
-            print("No.Times Contacted:", row[3],file=con)
-            print("\n", file=con)
+        try:
+            cur.execute("SELECT account_id, display_name,number,times_contacted, email_ori, address_ori, note_ori   from hwsearch_contacts WHERE account_id == \"|3|\"")
+            contact = cur.fetchall()
+            conCount = 0
+            for row in contact:
+                data = {"Name": row[1],
+                        "Number:": row[2],
+                        "Email:": row[4],
+                        "Address:": row[5],
+                        "Notes:": row[6]}
+                for col, abedata in data.items():
+                    if isinstance(data, str):
+                        print(col, data.replace("|", ""), file=con)
+                    else:
+                        print(col, "None", file=con)
+                print("No.Times Contacted:", row[3], file=con)
+                print("\n", file=con)
+                conCount += 1
+            print(dt()+" %d Contacts Found, See /reports/contacts.txt for detailed information:" % (conCount), file=report)
+        except sqlite3.OperationalError as NotFound:
+            print("[ERROR] No Contacts Found")
         con.close()
 
     else:
@@ -308,7 +318,6 @@ def calendarQuery():
         cur = connect.cursor()
         cur.execute("SELECT account_name FROM Calendars;")
         accounts = cur.fetchall()
-        print(dt(), "Calendar Account & Event Information extracted, see /report/calendar.txt for detailed information", file=report)
         print(dt(), "Calendar Contains the Following Accounts:", file=calendar)
         for row in accounts:
             print("\t\t", row[0], file=calendar)
@@ -317,6 +326,7 @@ def calendarQuery():
         cur.execute("SELECT title,allDay,dtstart,dtend,eventLocation FROM Events;")
         events = cur.fetchall()
         print("\n"+dt(), "Calendar Contains the Following Events:", file=calendar)
+        calCount = 0
         for row in events:
             startDateTime = str(row[2])
             cutDate = startDateTime[:-3]
@@ -327,9 +337,11 @@ def calendarQuery():
             endDate = time.strftime("%d/%M/%Y %H:%M:%S", time.localtime(int(cutSDate)))
 
             if (row[1] == 1):
-                print("\t\t", row[0],"All Day Event", "@", row[4], file=calendar)
+                print("\t\t", row[0], "All Day Event", "@", row[4], file=calendar)
             else:
                 print("\t\t", row[0], startDate, "-", endDate, " @ ", row[4], file=calendar)
+            calCount += 1
+        print(dt(), "%d Calendar Events Found, see /report/calendar.txt for detailed information" % (calCount), file=report)
     else:
         print("[ERROR] Calendar Database not found", file=report)
         print("[ERROR] Calendar Database not found")
@@ -360,12 +372,14 @@ def callQuery():
         cur = connect.cursor()
         cur.execute("select number, date, name, duration  from calls")
         callLog = cur.fetchall()
-        print(dt(), "Call Log Information extracted, see /report/calls.txt for detailed information", file=report)
+        callsCount = 0
         for row in callLog:
             print("Contact Name:", row[2], file=calls)
             print("Caller Number", row[0], file=calls)
             print("Call Duration:", row[3], "Seconds", file=calls)
             print("Call Date:", dateConversion(row[1]), "\n", file=calls)
+            callsCount += 1
+        print(dt(), "%d Call Logs Extracted, see /report/calls.txt for detailed information" % (callsCount), file=report)
     except:
         print("[ERROR] Calls Database Not Found")
     calls.close()
@@ -385,7 +399,7 @@ def emailQuery():
         cur = connect.cursor()
         cur.execute("SELECT Message.displayName, timeStamp,subject, fromList, toList, ccList, bccList, snippet, Account.displayName FROM Message JOIN Account ON account._id == Message.accountKey")
         sms = cur.fetchall()
-        print(dt(), "Extracting Email Data, see /reports/emails.txt for detailed information", file=report)
+        emailCount = 0
         for row in sms:
             if row[8] in row[4]:
                 print("Email received from", row[3], file=email)
@@ -393,7 +407,9 @@ def emailQuery():
                 print("Email sent to", row[4], file=email)
             print("Date:", dateConversion(row[1]), file=email)
             print("Subject:", row[2], file=email)
-            print("Snippet:", row[7], "\n", file=email)
+            print("Snippet:", row[7].encode('utf-8', 'ignore'), "\n", file=email)
+            emailCount += 1
+        print(dt(), "%d Emails Found, see /reports/emails.txt for detailed information" % (emailCount), file=report)
     else:
         print(dt(), "[ERROR] Email Database not found")
     email.close()
@@ -427,14 +443,16 @@ def chromeQuery():
         cur = connect.cursor()
         cur.execute("SELECT target_path, start_time, mime_type,tab_url,total_bytes FROM downloads;")
         download = cur.fetchall()
-
-        print(dt(), "Extracting Chrome download metadata, see /reports/chrome/downloads.txt for detailed information", file=report)
+        downCount = 0
         for row in download:
             print("File Type:", row[2], file=downloads)
             print("Download Path:", row[0], file=downloads)
             print("Downloaded From:", row[3], file=downloads)
             print("Time:", chromeDateTimeConv(row[1]), file=downloads)
             print("Total Bytes:", row[4], "\n", file=downloads)
+            downCount += 1
+        # print(dt(), "%d Google Chrome Downloads Found, see /reports/chrome/downloads.txt for detailed information" % (downCount), file=report)
+
         downloads.close()
         searchterms = open("reports/chrome/searchterms.txt", "w+", 1)
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=searchterms)
@@ -443,24 +461,27 @@ def chromeQuery():
         cur.execute("SELECT DISTINCT term from keyword_search_terms;")
         keyword = cur.fetchall()
 
-        print(dt(), "Extracting Chrome Search Terms, see /reports/chrome/searchterms.txt for detailed information:", file=report)
+        termCount = 0
         for row in keyword:
             print(row[0], file=searchterms)
+            termCount += 1
+        print(dt(), "%d Google Chrome Search Terms Found, see /reports/chrome/searchterms.txt for detailed information:" % (termCount), file=report)
+
         searchterms.close()
         URLS = open("reports/chrome/visitedurls.txt", "w+", 1)
-        print(dt(), "Extracting Chrome Visited URLS, see /reports/chrome/visitedurls.txt for detailed information:", file=report)
-
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=URLS)
         print("                  Chrome Visited URLs\n", file=URLS)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=URLS)
         cur.execute("SELECT DISTINCT url,title, visit_count,last_visit_time  from urls;")
         urls = cur.fetchall()
-
+        URLCount = 0
         for row in urls:
             print("Title:", row[1], file=URLS)
             print("URL:", row[0], file=URLS)
             print("Visit Count: ", row[2], file=URLS)
             print("Time:", chromeDateTimeConv(row[3]), "\n", file=URLS)
+            URLCount += 1
+        print(dt(), "%d Visited URLS Found, see /reports/chrome/visitedurls.txt for detailed information:" % (URLCount), file=report)
         URLS.close()
 
     else:
@@ -481,17 +502,21 @@ def smsQuery():
         connect = sqlite3.connect(db)
         print("\n"+dt(), "Connection made to SMS Database", file=report)
         cur = connect.cursor()
-        cur.execute("SELECT address, date, type, body FROM sms")
-        sms = cur.fetchall()
-        print(dt(), "Extracting SMS Messages, See /reports/SMS.txt for detailed information", file=report)
-        for row in sms:
-            if row[2] == 1:
-                print("Message Received from:", row[0], file=SMS)
-            else:
-                print("Message Sent to:", row[0], file=SMS)
-            print("Date:", dateConversion(row[1]), file=SMS)
-            print("Message:", row[3], "\n", file=SMS)
-
+        try:
+            cur.execute("SELECT address, date, type, body FROM sms")
+            sms = cur.fetchall()
+            smsCount = 0
+            for row in sms:
+                if row[2] == 1:
+                    print("Message Received from:", row[0], file=SMS)
+                else:
+                    print("Message Sent to:", row[0], file=SMS)
+                print("Date:", dateConversion(row[1]), file=SMS)
+                print("Message:", row[3], "\n", file=SMS)
+                smsCount += 1
+            print(dt(), "%d SMS Messages Found, See /reports/SMS.txt for detailed information" % (smsCount), file=report)
+        except sqlite3.OperationalError as NotFound:
+            print("[ERROR] SMS Data Not Found")
     else:
         print(dt(), "[ERROR] SMS Database not found", file=report)
         print(dt(), "[ERROR] SMS Database not found")
@@ -520,7 +545,7 @@ def whatsAppQuery():
         cur = connect.cursor()
         cur.execute("SELECT key_remote_jid, key_from_me,data,timestamp  from messages where data IS NOT NULL")
         messages = cur.fetchall()
-        print(dt(), "Extracting WhatsApp Messages, See /reports/WhatsApp/messages.txt for more info", file=report)
+        mssgCount = 0
         for row in messages:
             if row[1] == 1:
                 sent = row[0]
@@ -532,15 +557,17 @@ def whatsAppQuery():
                 print("Message received from", num, file=message)
             print("Message:", row[2], file=message)
             print("Date/Time:", dateConversion(row[3]), "\n", file=message)
-
+            mssgCount += 1
+        print(dt(), "%d WhatsApp Messages Found, See /reports/WhatsApp/messages.txt for more info" % (mssgCount), file=report)
         message.close()
+
         files = open("reports/WhatsApp/WhatsAppdownloads.txt", "w+", 1)
         print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
         print("                  WhatsApp Media Transfer Data\n", file=files)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=files)
-        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, media_mime_type  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
+        cur.execute("SELECT key_remote_jid,key_from_me,media_url,timestamp, hex(thumb_image)  from messages WHERE key_remote_jid != \"status@broadcast\" AND media_url IS NOT NULL")
         media = cur.fetchall()
-        print(dt(), "Extracting WhatsApp Media/File Transfer Data, see /report/WhatsApp/downloads.txt for detailed information:", file=report)
+        mediaCount = 0
         for row in media:
             if row[1] == 1:
                 sent = row[0]
@@ -552,19 +579,31 @@ def whatsAppQuery():
                 print("Media received from", row[0], file=files)
             print("Media URL:", row[2], file=files)
             print("Date:", dateConversion(row[3]), file=files)
-            print("File Type:", row[4], "\n", file=files)
+            decode_hex = codecs.getdecoder("hex_codec")
+            asciiBlob = decode_hex(row[4])[0]
+            URL = re.compile(b'Media/WhatsApp Images(.*).jpg').search(asciiBlob)
+            if URL is not None:
+                path = URL.group(0)
+                print("Download Path:", path.decode(), "\n", file=files)
+            else:
+                print("No File Path Found", file=files)
+            mediaCount += 1
+
+        print(dt(), "%d Media/File Transfer Data Found, see /report/WhatsApp/downloads.txt for detailed information:" % (mediaCount), file=report)
+
         files.close()
 
         calls = open("reports/WhatsApp/calls.txt", "w+", 1)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
         print("                  WhatsApp Call Logs\n", file=calls)
         print("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=calls)
-
-        cur.execute("SELECT key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration FROM messages JOIN call_logs ON message_row_id == messages._id")
+        cur.execute("SELECT jid.user,from_me,timestamp,video_call,duration  from call_log JOIN jid on jid_row_id == jid._id")
+        # cur.execute("SELECT key_remote_jid, key_from_me, messages.timestamp, call_logs.video_call, call_logs.duration FROM messages JOIN call_logs ON message_row_id == messages._id")
         callLogs = cur.fetchall()
-        print(dt(), "Extracting WhatsApp Call Logs, see /report/WhatsApp/callLogs.txt for detailed information:", file=report)
+        calCount = 0
         for row in callLogs:
             contact = row[0]
+            calCount = 0
             if row[1] == 1:
                 print("User Called", contact[0:12], file=calls)
             else:
@@ -575,9 +614,11 @@ def whatsAppQuery():
                 print("Video Call: No", file=calls)
             print("Date:", dateConversion(row[2]), file=calls)
             if row[4] != 0:
-                print("Duration:", row[4],"Seconds \n", file=calls)
+                print("Duration:", row[4], "Seconds \n", file=calls)
             else:
                 print("Call Missed\n", file=calls)
+            calCount += 1
+        print(dt(), "%d WhatsApp Call Logs Found, see /report/WhatsApp/callLogs.txt for detailed information:" % (calCount), file=report)
         calls.close()
 
     else:
@@ -605,7 +646,7 @@ def skypeQuery():
             cur = connect.cursor()
             cur.execute("SELECT nsp_data from localaddressbookcontacts")
             contacts = cur.fetchall()
-            print(dt(), "Extracting Skype Contacts, see /reports/skype/contacts.txt for detailed information", file=report)
+            conCount = 0
             for row in contacts:
                 for line in row:
                     data = json.loads(line)
@@ -618,8 +659,9 @@ def skypeQuery():
                                 for x, y in item.items():
                                     if x == "number":
                                         print(" Number:", y, file=contact)
-
+                    conCount += 1
                     print("\n", file=contact)
+            print(dt(), "%d Skype Contacts Found, see /reports/skype/contacts.txt for detailed information" % (conCount), file=report)
             contact.close()
         else:
             print(dt(), "[ERROR] Skype Database not found", file=report)
@@ -627,7 +669,7 @@ def skypeQuery():
 
 def skypeMessageQuery():
     '''Extract contacts and messages from skype Database'''
-    mssg = open("reports/Skype/skypeMessages.txt", "w+", 1)
+    mssg = open("reports/Skype/messages.txt", "w+", 1)
 
     print(dt(), "Extracting Messages from Skype Database")
     print("\n#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*\n", file=mssg)
@@ -640,7 +682,7 @@ def skypeMessageQuery():
             cur = connect.cursor()
             cur.execute("SELECT nsp_data from messagesv12")
             messages = cur.fetchall()
-            print(dt(), "Extracting Skype Messages, see /report/skype/messages.txt for detailed information:", file=report)
+            mssgCount = 0
             for row in messages:
                 for line in row:
                     msg = json.loads(line)
@@ -686,6 +728,8 @@ def skypeMessageQuery():
                         else:
                             print("Filetype Not Found", file=report)
                         print("Time:", time.strftime("%d/%m/%Y %H:%M"), "\n", file=mssg)
+                    mssgCount += 1
+            print(dt(), "%d Skype Messages Found, see /reports/skype/messages.txt for detailed information" % (mssgCount), file=report)
             mssg.close()
         else:
             print(dt(), "[ERROR] Skype Database not found", file=mssg)
@@ -702,6 +746,7 @@ def main():
             evidenceGathering()
             fileFoundGen()
             databaseExtract()
+            accountQuery()
             contactQuery()
             smsQuery()
             calendarQuery()
@@ -711,7 +756,6 @@ def main():
             whatsAppQuery()
             skypeQuery()
             skypeMessageQuery()
-            accountQuery()
     elif ("unauthorized" in connCheck):
         print("[ERROR] Device Unauthorized")
 
