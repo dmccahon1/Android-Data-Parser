@@ -222,7 +222,7 @@ def databaseExtract():
 
     print(dt(), "%d Databases have been extracted\n" % (totalFiles), file=report)
     procId = subprocess.Popen([adb, 'shell'], stdin=subprocess.PIPE)  # Open ADB Shell
-    # procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
+    procId.communicate(b'su\nrm -rf /sdcard/databases\nexit\nexit')  # Remove : from filename
     print(dt(), "Removed changes made to device", file=report)
 
 
@@ -451,7 +451,7 @@ def chromeQuery():
             print("Time:", chromeDateTimeConv(row[1]), file=downloads)
             print("Total Bytes:", row[4], "\n", file=downloads)
             downCount += 1
-        # print(dt(), "%d Google Chrome Downloads Found, see /reports/chrome/downloads.txt for detailed information" % (downCount), file=report)
+        print(dt(), "%d Google Chrome Downloads Found, see /reports/chrome/downloads.txt for detailed information" % (downCount), file=report)
 
         downloads.close()
         searchterms = open("reports/chrome/searchterms.txt", "w+", 1)
@@ -514,7 +514,6 @@ def smsQuery():
                 print("Date:", dateConversion(row[1]), file=SMS)
                 print("Message:", row[3], "\n", file=SMS)
                 smsCount += 1
-            print(dt(), "%d SMS Messages Found, See /reports/SMS.txt for detailed information" % (smsCount), file=report)
         except sqlite3.OperationalError as NotFound:
             print("[ERROR] SMS Data Not Found")
     else:
