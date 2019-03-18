@@ -113,7 +113,7 @@ def fileSigAnalysis(folder):
                 read = open(path, "rb").read(sigLen)  # Read for length of signature
                 hexBytes = " ".join(['{:02X}'.format(byte) for byte in read])  # Convert binary to hex
                 stripBytes = hexBytes.replace(" ", "")  # Strip all spaces, required due to having to strip spaces in dict to calcuate bytes
-                if stripBytes.startswith(value):   # If `````````file````````` sig is found, append to fileFound dict
+                if stripBytes.startswith(value):   # If file sig is found, append to fileFound dict
                     if key not in fileFound:
                         fileFound[key] = {}
                     fileFound[key][file] = path
